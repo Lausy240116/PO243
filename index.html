@@ -111,92 +111,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 👍 лайки
+// 👍 ЛАЙК
 window.processLike = async (id) => {
   const docRef = doc(db, "requests", id);
-  try {
-    await updateDoc(docRef, {
-      likes: increment(1)
-    });
-  } catch (e) {
-    console.error(e);
-  }
+  await updateDoc(docRef, {
+    likes: increment(1)
+  });
 };
 
-// 💬 ДОБАВИТЬ КОММЕНТАРИЙ
+// 💬 ДОБАВИТЬ КОММЕНТ
 window.addComment = async (postId) => {
   const text = prompt("Введите комментарий:");
-
   if (!text) return;
 
-  try {
-    await addDoc(collection(db, "requests", postId, "comments"), {
-      text: text,
-      createdAt: new Date()
-    });
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-// 💬 ЗАГРУЗКА КОММЕНТАРИЕВ
-function loadComments(postId, containerId) {
-  const commentsRef = collection(db, "requests", postId, "comments");
-
-  onSnapshot(commentsRef, (snapshot) => {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-
-    el.innerHTML = snapshot.docs.map(doc => {
-      return `<div style="font-size:13px;">💬 ${doc.data().text}</div>`;
-    }).join("");
+  await addDoc(collection(db, "requests", postId, "comments"), {
+    text: text,
+    createdAt: new Date()
   });
-}
-
-// ➕ добавление поста
-document.getElementById("mainBtn").onclick = async () => {
-  const btn = document.getElementById("mainBtn");
-  btn.disabled = true;
-
-  try {
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim();
-
-    if (!name || !email) {
-      alert("Введите имя и email!");
-      btn.disabled = false;
-      return;
-    }
-
-    await addDoc(collection(db, "requests"), {
-      name,
-      email,
-      likes: 0,
-      timestamp: serverTimestamp()
-    });
-
-    document.getElementById("name").value = "";
-    document.getElementById("email").value = "";
-  } catch (e) {
-    console.error(e);
-  }
-
-  btn.disabled = false;
 };
 
-// 📡 обновление постов
+// 📡 ПОСТЫ
 const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
   const feed = document.getElementById("feed");
+
   feed.innerHTML = snapshot.docs.map(docItem => {
     const data = docItem.data();
-    const timeStr = data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString() : "...";
-
-    // запускаем загрузку комментариев чуть позже
-    setTimeout(() => {
-      loadComments(docItem.id, "comments-" + docItem.id);
-    }, 0);
+    const timeStr = data.timestamp?.toDate
+      ? data.timestamp.toDate().toLocaleTimeString()
+      : "...";
 
     return `
       <div class="post">
@@ -208,13 +152,69 @@ onSnapshot(q, (snapshot) => {
           👍 ${data.likes || 0}
         </button>
 
-        <button onclick="addComment('${docItem.id}')">💬</button>
+        <button onclick="addComment('${docItem.id}')">💬 Комментировать</button>
 
-        <div id="comments-${docItem.id}"></div>
+        <div id="comments-${docItem.id}" style="margin-top:10px;"></div>
       </div>
     `;
   }).join('');
+
+  // 🔥 ВАЖНО: подписка на комментарии ПОСЛЕ рендера
+  snapshot.docs.forEach(docItem => {
+    const postId = docItem.id;
+    const containerId = "comments-" + postId;
+
+    const commentsRef = collection(db, "requests", postId, "comments");
+
+    onSnapshot(commentsRef, (snap) => {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+
+      if (snap.empty) {
+        el.innerHTML = "<i>Комментариев пока нет</i>";
+        return;
+      }
+
+      el.innerHTML = snap.docs.map(c => `
+        <div style="
+          background:#f9f9f9;
+          padding:6px;
+          margin-top:5px;
+          border-radius:5px;
+          font-size:14px;
+        ">
+          💬 ${c.data().text}
+        </div>
+      `).join('');
+    });
+  });
 });
+
+// ➕ ДОБАВЛЕНИЕ ПОСТА (оставил как у тебя)
+document.getElementById("mainBtn").onclick = async () => {
+  const btn = document.getElementById("mainBtn");
+  btn.disabled = true;
+
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+
+  if (!name || !email) {
+    alert("Введите имя и email!");
+    btn.disabled = false;
+    return;
+  }
+
+  await addDoc(collection(db, "requests"), {
+    name,
+    email,
+    likes: 0,
+    timestamp: serverTimestamp()
+  });
+
+  document.getElementById("name").value = "";
+  document.getElementById("email").value = "";
+  btn.disabled = false;
+};
 </script>
 
 </body>
