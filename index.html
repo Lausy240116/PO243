@@ -111,6 +111,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// 👍 лайки
 window.processLike = async (id) => {
   const docRef = doc(db, "requests", id);
   try {
@@ -122,6 +123,37 @@ window.processLike = async (id) => {
   }
 };
 
+// 💬 ДОБАВИТЬ КОММЕНТАРИЙ
+window.addComment = async (postId) => {
+  const text = prompt("Введите комментарий:");
+
+  if (!text) return;
+
+  try {
+    await addDoc(collection(db, "requests", postId, "comments"), {
+      text: text,
+      createdAt: new Date()
+    });
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+// 💬 ЗАГРУЗКА КОММЕНТАРИЕВ
+function loadComments(postId, containerId) {
+  const commentsRef = collection(db, "requests", postId, "comments");
+
+  onSnapshot(commentsRef, (snapshot) => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+
+    el.innerHTML = snapshot.docs.map(doc => {
+      return `<div style="font-size:13px;">💬 ${doc.data().text}</div>`;
+    }).join("");
+  });
+}
+
+// ➕ добавление поста
 document.getElementById("mainBtn").onclick = async () => {
   const btn = document.getElementById("mainBtn");
   btn.disabled = true;
@@ -152,7 +184,7 @@ document.getElementById("mainBtn").onclick = async () => {
   btn.disabled = false;
 };
 
-// Реактивное обновление данных на всех клиентах
+// 📡 обновление постов
 const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
 
 onSnapshot(q, (snapshot) => {
@@ -160,14 +192,25 @@ onSnapshot(q, (snapshot) => {
   feed.innerHTML = snapshot.docs.map(docItem => {
     const data = docItem.data();
     const timeStr = data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString() : "...";
+
+    // запускаем загрузку комментариев чуть позже
+    setTimeout(() => {
+      loadComments(docItem.id, "comments-" + docItem.id);
+    }, 0);
+
     return `
       <div class="post">
         <span class="time">${timeStr}</span>
         <b>${data.name}</b>
         <p style="margin:5px 0;">${data.email}</p>
+
         <button class="like-btn" onclick="processLike('${docItem.id}')">
           👍 ${data.likes || 0}
         </button>
+
+        <button onclick="addComment('${docItem.id}')">💬</button>
+
+        <div id="comments-${docItem.id}"></div>
       </div>
     `;
   }).join('');
