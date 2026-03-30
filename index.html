@@ -95,7 +95,7 @@ button:hover {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, updateDoc, doc, increment
+  serverTimestamp, updateDoc, doc, increment, where
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -111,29 +111,58 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 👍 ЛАЙК
+// 👍 лайки
 window.processLike = async (id) => {
-  const docRef = doc(db, "requests", id);
-  await updateDoc(docRef, {
+  await updateDoc(doc(db, "requests", id), {
     likes: increment(1)
   });
 };
 
-// 💬 ДОБАВИТЬ КОММЕНТ
+// 💬 добавить комментарий
 window.addComment = async (postId) => {
   const text = prompt("Введите комментарий:");
   if (!text) return;
 
-  await addDoc(collection(db, "requests", postId, "comments"), {
+  await addDoc(collection(db, "comments"), {
+    postId: postId,
     text: text,
     createdAt: new Date()
   });
 };
 
-// 📡 ПОСТЫ
-const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+// 💬 загрузка комментариев
+function loadComments(postId, containerId) {
+  const q = query(
+    collection(db, "comments"),
+    where("postId", "==", postId)
+  );
 
-onSnapshot(q, (snapshot) => {
+  onSnapshot(q, (snapshot) => {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+
+    if (snapshot.empty) {
+      el.innerHTML = "<i>Комментариев нет</i>";
+      return;
+    }
+
+    el.innerHTML = snapshot.docs.map(doc => `
+      <div style="
+        background:#f1f1f1;
+        padding:6px;
+        margin-top:5px;
+        border-radius:5px;
+      ">
+        💬 ${doc.data().text}
+      </div>
+    `).join('');
+  });
+}
+
+// 📡 посты
+const qPosts = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+
+onSnapshot(qPosts, (snapshot) => {
   const feed = document.getElementById("feed");
 
   feed.innerHTML = snapshot.docs.map(docItem => {
@@ -152,45 +181,20 @@ onSnapshot(q, (snapshot) => {
           👍 ${data.likes || 0}
         </button>
 
-        <button onclick="addComment('${docItem.id}')">💬 Комментировать</button>
+        <button onclick="addComment('${docItem.id}')">💬</button>
 
-        <div id="comments-${docItem.id}" style="margin-top:10px;"></div>
+        <div id="comments-${docItem.id}"></div>
       </div>
     `;
   }).join('');
 
-  // 🔥 ВАЖНО: подписка на комментарии ПОСЛЕ рендера
+  // подключаем комментарии
   snapshot.docs.forEach(docItem => {
-    const postId = docItem.id;
-    const containerId = "comments-" + postId;
-
-    const commentsRef = collection(db, "requests", postId, "comments");
-
-    onSnapshot(commentsRef, (snap) => {
-      const el = document.getElementById(containerId);
-      if (!el) return;
-
-      if (snap.empty) {
-        el.innerHTML = "<i>Комментариев пока нет</i>";
-        return;
-      }
-
-      el.innerHTML = snap.docs.map(c => `
-        <div style="
-          background:#f9f9f9;
-          padding:6px;
-          margin-top:5px;
-          border-radius:5px;
-          font-size:14px;
-        ">
-          💬 ${c.data().text}
-        </div>
-      `).join('');
-    });
+    loadComments(docItem.id, "comments-" + docItem.id);
   });
 });
 
-// ➕ ДОБАВЛЕНИЕ ПОСТА (оставил как у тебя)
+// ➕ добавление поста
 document.getElementById("mainBtn").onclick = async () => {
   const btn = document.getElementById("mainBtn");
   btn.disabled = true;
