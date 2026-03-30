@@ -58,17 +58,18 @@ button:hover {
   position: relative;
 }
 
-.like-btn {
+.like-btn, .reset-btn {
   cursor: pointer;
   border: none;
   background: black;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 14px;
+  margin-right: 5px;
   transition: 0.2s;
 }
 
-.like-btn:hover {
+.like-btn:hover, .reset-btn:hover {
   background: #e6e6e6;
 }
 
@@ -87,10 +88,7 @@ button:hover {
   <input type="text" id="name" placeholder="Имя профиля">
   <input type="email" id="email" placeholder="Рабочий Email">
   <button id="mainBtn">Опубликовать в облако</button>
-  <!-- Кнопка для показа количества постов -->
   <button onclick="showPostCount()">📊 Сколько постов?</button>
-  <!-- Кнопка для показа текущего времени -->
-  <button onclick="showCurrentTime()">⏰ Показать время</button>
 </div>
 
 <div id="feed" style="width:100%; max-width:500px;"></div>
@@ -124,6 +122,18 @@ window.processLike = async (id) => {
     });
   } catch (e) {
     console.error(e);
+  }
+};
+
+// Функция сброса лайков
+window.resetLikes = async (id) => {
+  const docRef = doc(db, "requests", id);
+  try {
+    await updateDoc(docRef, { likes: 0 });
+    alert("Лайки сброшены!");
+  } catch (e) {
+    console.error(e);
+    alert("Ошибка при сбросе лайков");
   }
 };
 
@@ -169,12 +179,6 @@ window.showPostCount = async () => {
   }
 };
 
-// Новая функция: показать текущее время
-window.showCurrentTime = () => {
-  const now = new Date();
-  alert(`Сейчас: ${now.toLocaleTimeString()}`);
-};
-
 // Реактивное обновление данных на всех клиентах
 const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
 
@@ -190,6 +194,9 @@ onSnapshot(q, (snapshot) => {
         <p style="margin:5px 0;">${data.email}</p>
         <button class="like-btn" onclick="processLike('${docItem.id}')">
           👍 ${data.likes || 0}
+        </button>
+        <button class="reset-btn" onclick="resetLikes('${docItem.id}')">
+          ♻️ Сбросить лайки
         </button>
       </div>
     `;
