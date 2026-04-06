@@ -5,177 +5,31 @@
 <title>Анонимные заявки + Личные сообщения</title>
 
 <style>
-body {
-  font-family: Inter, sans-serif;
-  background: #f4f7f6;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  min-height: 100vh;
-  margin: 0;
-}
-.container {
-  width: 100%;
-  max-width: 500px;
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
-  box-sizing: border-box;
-}
-
-input, button, select {
-  width: 100%;
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  box-sizing: border-box;
-  border: 1px solid #ddd;
-  font-size: 16px;
-}
-
-button {
-  background: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: 0.3s;
-}
-button:hover {
-  background: #0056b3;
-}
-
-.post {
-  background: #fff;
-  border: 1px solid #eee;
-  padding: 15px;
-  margin-top: 10px;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 500px;
-  position: relative;
-}
-
-.like-btn, .reset-btn {
-  cursor: pointer;
-  border: none;
-  background: black;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  margin-right: 5px;
-  transition: 0.2s;
-}
-
-.like-btn:hover, .reset-btn:hover {
-  background: #e6e6e6;
-}
-
-.time {
-  font-size: 11px;
-  color: #999;
-  float: right;
-}
-
-/* Новый стиль для чата */
-#dmContainer {
-  max-width: 500px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  padding: 20px;
-  box-sizing: border-box;
-  display: none;
-  flex-direction: column;
-  height: 500px;
-}
-
-#usersList {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-
-.user-item {
-  display: inline-block;
-  background: #007bff;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 20px;
-  cursor: pointer;
-  margin-right: 8px;
-  user-select: none;
-}
-
-.user-item.selected {
-  background: #0056b3;
-}
-
-#chatWindow {
-  flex-grow: 1;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 10px;
-  background: #fafafa;
-  margin-bottom: 10px;
-  white-space: pre-wrap;
-}
-
-.message {
-  margin-bottom: 8px;
-  max-width: 70%;
-  padding: 8px 12px;
-  border-radius: 10px;
-  line-height: 1.3;
-}
-
-.message.own {
-  background: #007bff;
-  color: white;
-  margin-left: auto;
-  text-align: right;
-}
-
-.message.other {
-  background: #ddd;
-  color: black;
-  margin-right: auto;
-  text-align: left;
-}
-
-#dmInput {
-  display: flex;
-  gap: 10px;
-}
-
-#dmInput input[type="text"] {
-  flex-grow: 1;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 10px;
-  font-size: 16px;
-}
-
-#dmInput button {
-  width: 80px;
-  padding: 10px;
-  font-weight: bold;
-}
-
-/* Отступ для основного блока, чтобы не слипалось */
-#formBox {
-  margin-bottom: 40px;
-}
+body { font-family: Inter, sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; min-height: 100vh; margin: 0; }
+.container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
+input, button, select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 6px; box-sizing: border-box; border: 1px solid #ddd; font-size: 16px; }
+button { background: #007bff; color: white; border: none; cursor: pointer; transition: 0.3s; }
+button:hover { background: #0056b3; }
+.post { background: #fff; border: 1px solid #eee; padding: 15px; margin-top: 10px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
+.like-btn, .reset-btn { cursor: pointer; border: none; background: black; padding: 5px 12px; border-radius: 20px; font-size: 14px; margin-right: 5px; transition: 0.2s; }
+.like-btn:hover, .reset-btn:hover { background: #e6e6e6; }
+.time { font-size: 11px; color: #999; float: right; }
+#dmContainer { max-width: 500px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 20px; box-sizing: border-box; display: none; flex-direction: column; height: 500px; }
+#usersList { border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 10px; overflow-x: auto; white-space: nowrap; }
+.user-item { display: inline-block; background: #007bff; color: white; padding: 8px 14px; border-radius: 20px; cursor: pointer; margin-right: 8px; user-select: none; }
+.user-item.selected { background: #0056b3; }
+#chatWindow { flex-grow: 1; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #fafafa; margin-bottom: 10px; white-space: pre-wrap; }
+.message { margin-bottom: 8px; max-width: 70%; padding: 8px 12px; border-radius: 10px; line-height: 1.3; }
+.message.own { background: #007bff; color: white; margin-left: auto; text-align: right; }
+.message.other { background: #ddd; color: black; margin-right: auto; text-align: left; }
+#dmInput { display: flex; gap: 10px; }
+#dmInput input[type="text"] { flex-grow: 1; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 16px; }
+#dmInput button { width: 80px; padding: 10px; font-weight: bold; }
+#formBox { margin-bottom: 40px; }
 </style>
 </head>
 <body>
 
-<!-- 🔐 КНОПКИ АВТОРИЗАЦИИ (ДОБАВЛЕНО) -->
 <div class="container" id="authBox">
   <button id="loginBtn">🔐 Войти через Google</button>
   <button id="logoutBtn" style="display:none;">🚪 Выйти</button>
@@ -191,7 +45,6 @@ button:hover {
 
 <div id="feed" style="width:100%; max-width:500px;"></div>
 
-<!-- Новый блок для личных сообщений -->
 <div class="container" id="dmContainer">
   <div id="usersList"><b>Выберите собеседника:</b></div>
   <div id="chatWindow"></div>
@@ -203,20 +56,9 @@ button:hover {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, updateDoc, doc, increment, getDocs, where
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-
-// === Твой исходный конфиг ===
 const firebaseConfig = {
   apiKey: "AIzaSyDj35E4SPS-hxo0ILX2EgnOeO6ccGNc8JI",
   authDomain: "po243-e5610.firebaseapp.com",
@@ -226,11 +68,8 @@ const firebaseConfig = {
   appId: "1:351488478677:web:f8dc387ace0feaf50c415c",
   measurementId: "G-6SDF3PG9CS"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// === AUTH ===
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
@@ -238,249 +77,144 @@ const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const formBox = document.getElementById("formBox");
 const dmContainer = document.getElementById("dmContainer");
-
-// === Вход/выход ===
-loginBtn.onclick = async () => {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (e) {
-    console.error(e);
-  }
-};
-logoutBtn.onclick = async () => {
-  await signOut(auth);
-};
-
-// === Показывать/скрывать форму и чат в зависимости от пользователя ===
 let currentUser = null;
-let currentUserData = null; // объект пользователя из Firestore (для DM)
 let selectedChatUser = null;
 
+// Вход/выход
+loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch (e) { console.error(e); } };
+logoutBtn.onclick = async () => { await signOut(auth); };
+
+// Аутентификация
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
-  if (user) {
+  if(user) {
     formBox.style.display = "block";
     loginBtn.style.display = "none";
     logoutBtn.style.display = "block";
     dmContainer.style.display = "flex";
-
-    // Загрузим список пользователей из коллекции requests для DM
-    // (сделаем простой список из уникальных email+name)
-    const snapshot = await getDocs(collection(db, "requests"));
-    const usersMap = new Map();
-    snapshot.docs.forEach(doc => {
-      const d = doc.data();
-      if (d.email && d.name) {
-        usersMap.set(d.email, d.name);
-      }
+    // Реактивный список пользователей
+    const usersRef = collection(db, "requests");
+    onSnapshot(usersRef, snapshot => {
+      const usersMap = new Map();
+      snapshot.docs.forEach(doc => {
+        const d = doc.data();
+        if(d.email && d.name && d.email !== currentUser.email) usersMap.set(d.email, d.name);
+      });
+      renderUsersList(usersMap);
     });
-
-    renderUsersList(usersMap);
   } else {
     formBox.style.display = "none";
     loginBtn.style.display = "block";
     logoutBtn.style.display = "none";
     dmContainer.style.display = "none";
-    currentUserData = null;
     selectedChatUser = null;
   }
 });
 
-// === Отобразить список пользователей (собеседников) ===
+// Список пользователей
 const usersListEl = document.getElementById("usersList");
-function renderUsersList(usersMap) {
-  // Очистить
+function renderUsersList(usersMap){
   usersListEl.innerHTML = "<b>Выберите собеседника:</b> ";
-  usersMap.forEach((name, email) => {
-    // Не показывать себя в списке
-    if (currentUser && currentUser.email === email) return;
-
-    const span = document.createElement("span");
-    span.className = "user-item";
-    span.textContent = name;
-    span.dataset.email = email;
-    span.onclick = () => {
-      selectChatUser(email, name);
-    };
+  usersMap.forEach((name,email)=>{
+    const span=document.createElement("span");
+    span.className="user-item";
+    span.textContent=name;
+    span.dataset.email=email;
+    span.onclick=()=>selectChatUser(email,name);
     usersListEl.appendChild(span);
   });
 }
 
-// === Обработка выбора собеседника ===
+// Выбор собеседника
 const chatWindow = document.getElementById("chatWindow");
 const dmMessageInput = document.getElementById("dmMessageInput");
 const sendDMBtn = document.getElementById("sendDMBtn");
+let unsubscribeChat=null;
 
-function selectChatUser(email, name) {
-  selectedChatUser = { email, name };
-  // Подсветим выбранного
-  Array.from(usersListEl.querySelectorAll(".user-item")).forEach(el => {
-    el.classList.toggle("selected", el.dataset.email === email);
+function selectChatUser(email,name){
+  selectedChatUser={email,name};
+  Array.from(usersListEl.querySelectorAll(".user-item")).forEach(el=>{
+    el.classList.toggle("selected",el.dataset.email===email);
   });
-  chatWindow.innerHTML = "Загрузка сообщений...";
   loadChatMessages();
 }
 
-// === Загрузка сообщений между currentUser и selectedChatUser ===
-let unsubscribeChat = null;
-function loadChatMessages() {
-  if (unsubscribeChat) unsubscribeChat();
-
-  if (!currentUser || !selectedChatUser) {
-    chatWindow.innerHTML = "";
-    return;
-  }
-
-  // Сообщения, где (от currentUser к selectedChatUser) или (наоборот)
-  // коллекция "dm_messages"
-  // каждое сообщение хранит: from, to, text, timestamp
-
-  const messagesRef = collection(db, "dm_messages");
-  const q = query(messagesRef,
-    orderBy("timestamp"),
-    where("participants", "array-contains", currentUser.email)
-  );
-
-  unsubscribeChat = onSnapshot(q, (snapshot) => {
-    // Фильтруем сообщения только с выбранным собеседником
-    const messages = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(m => (
-        (m.from === currentUser.email && m.to === selectedChatUser.email) ||
-        (m.to === currentUser.email && m.from === selectedChatUser.email)
-      ));
-
+// Загрузка сообщений
+function loadChatMessages(){
+  if(unsubscribeChat) unsubscribeChat();
+  if(!currentUser || !selectedChatUser){ chatWindow.innerHTML=""; return; }
+  const messagesRef=collection(db,"dm_messages");
+  const q=query(messagesRef,orderBy("timestamp"),where("participants","array-contains",currentUser.email));
+  unsubscribeChat=onSnapshot(q,snapshot=>{
+    const messages=snapshot.docs.map(d=>({...d.data(),id:d.id})).filter(m=>
+      (m.from===currentUser.email && m.to===selectedChatUser.email) ||
+      (m.to===currentUser.email && m.from===selectedChatUser.email)
+    );
     renderMessages(messages);
   });
 }
 
-// === Отобразить сообщения в чате ===
-function renderMessages(messages) {
-  chatWindow.innerHTML = "";
-  messages.forEach(m => {
-    const div = document.createElement("div");
-    div.className = "message " + (m.from === currentUser.email ? "own" : "other");
-    div.textContent = m.text;
+function renderMessages(messages){
+  chatWindow.innerHTML="";
+  messages.forEach(m=>{
+    const div=document.createElement("div");
+    div.className="message "+(m.from===currentUser.email?"own":"other");
+    div.textContent=m.text;
     chatWindow.appendChild(div);
   });
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  chatWindow.scrollTop=chatWindow.scrollHeight;
 }
 
-// === Отправить сообщение ===
-sendDMBtn.onclick = async () => {
-  if (!currentUser || !selectedChatUser) {
-    alert("Выберите собеседника!");
-    return;
-  }
-  const text = dmMessageInput.value.trim();
-  if (!text) return;
-
-  try {
-    await addDoc(collection(db, "dm_messages"), {
-      from: currentUser.email,
-      to: selectedChatUser.email,
-      participants: [currentUser.email, selectedChatUser.email],
+// Отправка DM
+sendDMBtn.onclick=async ()=>{
+  if(!currentUser || !selectedChatUser){ alert("Выберите собеседника!"); return; }
+  const text=dmMessageInput.value.trim();
+  if(!text) return;
+  try{
+    await addDoc(collection(db,"dm_messages"),{
+      from:currentUser.email,
+      to:selectedChatUser.email,
+      participants:[currentUser.email,selectedChatUser.email],
       text,
-      timestamp: serverTimestamp()
+      timestamp:serverTimestamp()
     });
-    dmMessageInput.value = "";
-  } catch (e) {
-    console.error("Ошибка при отправке сообщения:", e);
-  }
+    dmMessageInput.value="";
+  }catch(e){console.error("Ошибка при отправке:",e);}
 };
 
-// === Ниже идет Твой исходный код (никаких изменений!) ===
-
-// Функция лайка
-window.processLike = async (id) => {
-  const docRef = doc(db, "requests", id);
-  try {
-    await updateDoc(docRef, {
-      likes: increment(1)
-    });
-  } catch (e) {
-    console.error(e);
-  }
+// === Исходный код постов ===
+window.processLike=async id=>{
+  const docRef=doc(db,"requests",id);
+  try{await updateDoc(docRef,{likes:increment(1)});}catch(e){console.error(e);}
 };
-
-// Функция сброса лайков
-window.resetLikes = async (id) => {
-  const docRef = doc(db, "requests", id);
-  try {
-    await updateDoc(docRef, { likes: 0 });
-    alert("Лайки сброшены!");
-  } catch (e) {
-    console.error(e);
-    alert("Ошибка при сбросе лайков");
-  }
+window.resetLikes=async id=>{
+  const docRef=doc(db,"requests",id);
+  try{await updateDoc(docRef,{likes:0});alert("Лайки сброшены!");}catch(e){console.error(e);alert("Ошибка!");}
 };
-
-// Добавление поста
-document.getElementById("mainBtn").onclick = async () => {
-  const btn = document.getElementById("mainBtn");
-  btn.disabled = true;
-
-  try {
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim();
-
-    if (!name || !email) {
-      alert("Введите имя и email!");
-      btn.disabled = false;
-      return;
-    }
-
-    await addDoc(collection(db, "requests"), {
-      name,
-      email,
-      likes: 0,
-      timestamp: serverTimestamp()
-    });
-
-    document.getElementById("name").value = "";
-    document.getElementById("email").value = "";
-  } catch (e) {
-    console.error(e);
-  }
-
-  btn.disabled = false;
+document.getElementById("mainBtn").onclick=async ()=>{
+  const btn=document.getElementById("mainBtn");btn.disabled=true;
+  try{
+    const name=document.getElementById("name").value.trim();
+    const email=document.getElementById("email").value.trim();
+    if(!name||!email){alert("Введите имя и email!");btn.disabled=false;return;}
+    await addDoc(collection(db,"requests"),{name,email,likes:0,timestamp:serverTimestamp()});
+    document.getElementById("name").value="";
+    document.getElementById("email").value="";
+  }catch(e){console.error(e);}btn.disabled=false;
 };
-
-// Функция для показа количества постов
-window.showPostCount = async () => {
-  try {
-    const snapshot = await getDocs(collection(db, "requests"));
-    alert(`Всего постов: ${snapshot.size}`);
-  } catch (e) {
-    console.error(e);
-    alert("Ошибка при получении количества постов");
-  }
+window.showPostCount=async ()=>{
+  try{const snapshot=await getDocs(collection(db,"requests"));alert(`Всего постов: ${snapshot.size}`);}
+  catch(e){console.error(e);alert("Ошибка при получении постов");}
 };
-
-// Реактивное обновление данных на всех клиентах
-const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
-
-onSnapshot(q, (snapshot) => {
-  const feed = document.getElementById("feed");
-  feed.innerHTML = snapshot.docs.map(docItem => {
-    const data = docItem.data();
-    const timeStr = data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString() : "...";
-    return `
-      <div class="post">
-        <span class="time">${timeStr}</span>
-        <b>${data.name}</b>
-        <p style="margin:5px 0;">${data.email}</p>
-        <button class="like-btn" onclick="processLike('${docItem.id}')">
-          👍 ${data.likes || 0}
-        </button>
-        <button class="reset-btn" onclick="resetLikes('${docItem.id}')">
-          ♻️ Сбросить лайки
-        </button>
-      </div>
-    `;
+const q=query(collection(db,"requests"),orderBy("timestamp","desc"));
+onSnapshot(q,snapshot=>{
+  const feed=document.getElementById("feed");
+  feed.innerHTML=snapshot.docs.map(docItem=>{
+    const data=docItem.data();
+    const timeStr=data.timestamp?.toDate?data.timestamp.toDate().toLocaleTimeString():"...";
+    return `<div class="post"><span class="time">${timeStr}</span><b>${data.name}</b><p style="margin:5px 0;">${data.email}</p><button class="like-btn" onclick="processLike('${docItem.id}')">👍 ${data.likes||0}</button><button class="reset-btn" onclick="resetLikes('${docItem.id}')">♻️ Сбросить лайки</button></div>`;
   }).join('');
 });
 </script>
-
 </body>
 </html>
