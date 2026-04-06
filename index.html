@@ -12,19 +12,10 @@ button { background: #007bff; color: white; border: none; cursor: pointer; trans
 button:hover { background: #0056b3; }
 .post { background: #fff; border: 1px solid #eee; padding: 15px; margin-top: 10px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
 .time { font-size: 11px; color: #999; float: right; }
-.chat-message { padding: 6px 10px; margin-bottom: 5px; border-radius: 8px; }
-.chat-message-you { background: #d1ffd1; text-align: right; }
-.chat-message-other { background: #f0f0f0; text-align: left; }
-.chat-window {
-    height: 60vh;           /* 60% от высоты окна браузера */
-    min-height: 300px;      /* минимальная высота */
-    max-height: 600px;      /* ограничение сверху */
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    padding: 10px;
-    border-radius: 8px;
-    background: #f9f9f9;
-}
+.chat-window { height: 60vh; min-height: 300px; max-height: 600px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #f9f9f9; }
+.chat-message { padding: 6px 10px; margin-bottom: 5px; border-radius: 8px; display: inline-block; max-width: 80%; word-wrap: break-word; }
+.chat-message-you { background: #d1ffd1; text-align: right; float: right; clear: both; }
+.chat-message-other { background: #f0f0f0; text-align: left; float: left; clear: both; }
 </style>
 </head>
 <body>
@@ -60,7 +51,7 @@ button:hover { background: #0056b3; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment, getDocs, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, increment, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -79,6 +70,7 @@ const provider = new GoogleAuthProvider();
 
 let currentUserEmail = null;
 let currentChatUser = null;
+let unsubscribeDM = null;
 
 // Авторизация
 document.getElementById("loginBtn").onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e) { console.error(e); } };
@@ -116,6 +108,7 @@ document.getElementById("mainBtn").onclick = async () => {
     if(!name||!email){alert("Введите имя и email!"); btn.disabled=false; return;}
     await addDoc(collection(db,"requests"),{name,email,likes:0,timestamp:serverTimestamp()});
     document.getElementById("name").value=""; document.getElementById("email").value="";
+    loadUsersForDM(); // обновляем список DM пользователей
   } catch(e){console.error(e);}
   btn.disabled=false;
 };
@@ -137,7 +130,6 @@ onSnapshot(q,snapshot=>{
 });
 
 // ------------------ ЧАТ DM ------------------
-// 1. Загружаем пользователей
 async function loadUsersForDM() {
   try{
     const snapshot = await getDocs(collection(db,"requests"));
@@ -155,14 +147,34 @@ async function loadUsersForDM() {
   }catch(e){console.error(e);}
 }
 
-// 2. Выбор собеседника
-document.getElementById("dmUserSelect").onchange = (e)=>{
+// Выбор собеседника
+document.getElementById("dmUserSelect").onchange = (e) => {
   currentChatUser = e.target.value;
-  loadDMFeed();
+  const feed = document.getElementById("chatWindow");
+  feed.innerHTML = '';
+  if (unsubscribeDM) unsubscribeDM();
+
+  if (!currentChatUser) return;
+
+  const dmQuery = query(collection(db,"dm_messages"), orderBy("timestamp","asc"));
+  unsubscribeDM = onSnapshot(dmQuery, snapshot=>{
+    feed.innerHTML="";
+    snapshot.docs.forEach(docItem=>{
+      const data = docItem.data();
+      if(data.participants.includes(currentUserEmail) && data.participants.includes(currentChatUser)){
+        const div = document.createElement("div");
+        div.className = "chat-message " + (data.from===currentUserEmail ? "chat-message-you" : "chat-message-other");
+        const timeStr = data.timestamp?.toDate ? data.timestamp.toDate().toLocaleTimeString() : "...";
+        div.innerHTML = `<b>${data.from===currentUserEmail?"Вы":data.from}</b>: ${data.text} <span style="font-size:10px;color:#666;">${timeStr}</span>`;
+        feed.appendChild(div);
+      }
+    });
+    feed.scrollTop = feed.scrollHeight;
+  });
 };
 
-// 3. Отправка сообщения
-document.getElementById("dmSendBtn").onclick=async ()=>{
+// Отправка сообщения
+document.getElementById("dmSendBtn").onclick = async ()=>{
   const text = document.getElementById("dmText").value.trim();
   if(!currentChatUser) return alert("Выберите пользователя!");
   if(!text) return alert("Введите сообщение!");
@@ -177,27 +189,6 @@ document.getElementById("dmSendBtn").onclick=async ()=>{
     document.getElementById("dmText").value='';
   }catch(e){console.error(e);}
 };
-
-// 4. Реактивная загрузка сообщений чата
-function loadDMFeed(){
-  if(!currentChatUser) return;
-  const dmQuery = query(collection(db,"dm_messages"), orderBy("timestamp","asc"));
-  onSnapshot(dmQuery, snapshot=>{
-    const feed=document.getElementById("chatWindow");
-    feed.innerHTML="";
-    snapshot.docs.forEach(docItem=>{
-      const data=docItem.data();
-      // Показываем только сообщения между нами и выбранным пользователем
-      if(data.participants.includes(currentUserEmail) && data.participants.includes(currentChatUser)){
-        const div = document.createElement("div");
-        div.className="chat-message " + (data.from===currentUserEmail?"chat-message-you":"chat-message-other");
-        div.textContent = `${data.from===currentUserEmail?"Вы":data.from}: ${data.text}`;
-        feed.appendChild(div);
-      }
-    });
-    feed.scrollTop = feed.scrollHeight;
-  });
-}
 </script>
 
 </body>
