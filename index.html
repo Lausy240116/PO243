@@ -426,6 +426,101 @@ onSnapshot(q, (snapshot) => {
 
 });
 
+// =======================
+// 💬 DM СИСТЕМА
+// =======================
+
+// создаём контейнер (JS-ом, HTML не трогаем)
+const dmBox = document.createElement("div");
+dmBox.className = "container";
+dmBox.innerHTML = `
+  <h3>💬 Личные сообщения</h3>
+  <select id="userSelect"></select>
+  <input type="text" id="dmText" placeholder="Введите сообщение">
+  <button id="sendDm">Отправить</button>
+  <div id="dmChat"></div>
+`;
+document.body.appendChild(dmBox);
+
+// получить пользователей
+const loadUsers = async () => {
+  const snapshot = await getDocs(collection(db, "requests"));
+  const select = document.getElementById("userSelect");
+  select.innerHTML = "";
+
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const option = document.createElement("option");
+    option.value = data.email;
+    option.textContent = `${data.name} (${data.email})`;
+    select.appendChild(option);
+  });
+};
+
+loadUsers();
+
+// отправка сообщения
+document.getElementById("sendDm").onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) return alert("Нужно войти!");
+
+  const to = document.getElementById("userSelect").value;
+  const text = document.getElementById("dmText").value.trim();
+
+  if (!text) return;
+
+  try {
+    await addDoc(collection(db, "dm_messages"), {
+      from: user.email,
+      to: to,
+      text: text,
+      participants: [user.email, to],
+      timestamp: serverTimestamp()
+    });
+
+    document.getElementById("dmText").value = "";
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+// загрузка чата
+const loadMessages = () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const q = query(collection(db, "dm_messages"), orderBy("timestamp"));
+
+  onSnapshot(q, (snapshot) => {
+    const chat = document.getElementById("dmChat");
+    chat.innerHTML = "";
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      // показываем только свои диалоги
+      if (!data.participants.includes(user.email)) return;
+
+      const div = document.createElement("div");
+      div.style.borderBottom = "1px solid #eee";
+      div.style.padding = "5px";
+
+      div.innerHTML = `
+        <b>${data.from}</b>: ${data.text}
+      `;
+
+      chat.appendChild(div);
+    });
+  });
+};
+
+// запуск после логина
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loadMessages();
+    loadUsers();
+  }
+});
 </script>
 
 </body>
