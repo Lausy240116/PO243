@@ -1,68 +1,77 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Статус</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #f2f2f2;
-      display: flex;
-      justify-content: center;
-      padding: 40px;
-    }
+<meta charset="UTF-8">
+<title>Status App</title>
 
-    .card {
-      background: #ffe4ec;
-      padding: 20px;
-      border-radius: 12px;
-      width: 320px;
-      margin-bottom: 20px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
+<style>
+body {
+  font-family: Arial;
+  background: #f2f2f2;
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
 
-    button {
-      padding: 10px;
-      margin: 5px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      color: white;
-      font-weight: bold;
-      width: 45%;
-    }
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 320px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
 
-    .list-item {
-      display: flex;
-      align-items: center;
-      margin: 10px 0;
-    }
+.status-card {
+  background: #ffe4ec;
+}
 
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 10px;
-    }
-  </style>
+button {
+  padding: 10px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  width: 45%;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+</style>
 </head>
+
 <body>
 
 <div>
-  <div class="card">
-    <h3>Мой профиль</h3>
-    <p id="myInfo"></p>
 
-    <button onclick="changeStatus('Учусь','#28a745')">Учусь</button>
-    <button onclick="changeStatus('Кофе','#ffc107')">Кофе</button><br>
-    <button onclick="changeStatus('В игре','#17a2b8')">В игре</button>
-    <button onclick="changeStatus('Дома','#6c757d')">Дома</button>
+  <!-- МОЙ СТАТУС -->
+  <div class="card status-card">
+    <h3>Мой статус</h3>
+    <p id="me">Загрузка...</p>
+
+    <button style="background:#28a745" onclick="setStatus('Учусь','#28a745')">Учусь</button>
+    <button style="background:#ffc107" onclick="setStatus('Кофе','#ffc107')">Кофе</button><br>
+    <button style="background:#17a2b8" onclick="setStatus('В игре','#17a2b8')">В игре</button>
+    <button style="background:#6c757d" onclick="setStatus('Дома','#6c757d')">Дома</button>
   </div>
 
+  <!-- СПИСОК -->
   <div class="card">
-    <h3>Монитор группы</h3>
-    <div id="groupList"></div>
+    <h3>Пользователи</h3>
+    <div id="list"></div>
   </div>
+
 </div>
 
 <script type="module">
@@ -71,64 +80,62 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // 🔴 ВСТАВЬ СВОИ ДАННЫЕ
 const URL = 'https://pcqynrythvnyikchappl.supabase.co'
 const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
-
-// 🔴 ТВОЙ СУЩЕСТВУЮЩИЙ ID
 const MY_ID = 'd9eeb7aa-2ded-47c5-86de-98377838ea2c'
 
 const supabase = createClient(URL, KEY)
+window.supabase = supabase // для теста в консоли
 
-// ---- смена статуса ----
-window.changeStatus = async (text, color) => {
+// 🔄 смена статуса
+window.setStatus = async (text, color) => {
+
   const { error } = await supabase
     .from('profiles')
-    .update({ status: text, color: color })
+    .update({
+      status: text,
+      color: color
+    })
     .eq('id', MY_ID)
 
   if (error) {
-    alert('Ошибка записи в базу')
+    alert(error.message)
     console.error(error)
   } else {
-    fetchGroup()
+    load()
   }
 }
 
-// ---- загрузка списка ----
-async function fetchGroup() {
+// 📥 загрузка пользователей
+async function load() {
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .order('username', { ascending: true })
 
   if (error) {
     console.error(error)
     return
   }
 
-  const list = document.getElementById('groupList')
-
-  list.innerHTML = data.map(user => `
-    <div class="list-item">
-      <div class="dot" style="background:${user.color || '#ccc'}"></div>
-      <div>
-        <b>${user.username}</b><br>
-        <small>${user.status || 'нет статуса'}</small>
+  document.getElementById('list').innerHTML =
+    data.map(u => `
+      <div class="list-item">
+        <div class="dot" style="background:${u.color || '#ccc'}"></div>
+        <div>
+          <b>${u.username}</b><br>
+          <small>${u.status || 'нет статуса'}</small>
+        </div>
       </div>
-    </div>
-  `).join('')
+    `).join('')
 
-  // 👇 показываем себя
   const me = data.find(u => u.id === MY_ID)
   if (me) {
-    document.getElementById('myInfo').innerText =
-      `Вы зашли как: ${me.username}`
+    document.getElementById('me').innerText =
+      me.username + " — " + me.status
   }
 }
 
-// ---- запуск ----
-fetchGroup()
-
-// автообновление
-setInterval(fetchGroup, 3000)
+load()
+setInterval(load, 3000)
 
 </script>
 
