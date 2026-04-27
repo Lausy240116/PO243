@@ -37,8 +37,6 @@ button {
 }
 
 .list-item {
-  display: flex;
-  align-items: center;
   margin: 10px 0;
 }
 </style>
@@ -111,10 +109,8 @@ async function load() {
   document.getElementById('list').innerHTML =
     data.map(u => `
       <div class="list-item">
-        <div>
-          <b>${u.username}</b><br>
-          <small>${u.status || 'нет статуса'}</small>
-        </div>
+        <b>${u.username}</b><br>
+        <small>${u.status || 'нет статуса'}</small>
       </div>
     `).join('')
 
