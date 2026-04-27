@@ -41,13 +41,6 @@ button {
   align-items: center;
   margin: 10px 0;
 }
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 10px;
-}
 </style>
 </head>
 
@@ -60,10 +53,10 @@ button {
     <h3>Мой статус</h3>
     <p id="me">Загрузка...</p>
 
-    <button style="background:#28a745" onclick="setStatus('Учусь','#28a745')">Учусь</button>
-    <button style="background:#ffc107" onclick="setStatus('Кофе','#ffc107')">Кофе</button><br>
-    <button style="background:#17a2b8" onclick="setStatus('В игре','#17a2b8')">В игре</button>
-    <button style="background:#6c757d" onclick="setStatus('Дома','#6c757d')">Дома</button>
+    <button style="background:#28a745" onclick="setStatus('Учусь')">Учусь</button>
+    <button style="background:#ffc107" onclick="setStatus('Кофе')">Кофе</button><br>
+    <button style="background:#17a2b8" onclick="setStatus('В игре')">В игре</button>
+    <button style="background:#6c757d" onclick="setStatus('Дома')">Дома</button>
   </div>
 
   <!-- СПИСОК -->
@@ -83,15 +76,15 @@ const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
 const MY_ID = 'd9eeb7aa-2ded-47c5-86de-98377838ea2c'
 
 const supabase = createClient(URL, KEY)
-window.supabase = supabase // для теста в консоли
+window.supabase = supabase
 
-// 🔄 смена статуса
-window.setStatus = async (text, color) => {
+// 🔄 смена статуса (БЕЗ COLOR)
+window.setStatus = async (text) => {
 
   const { error } = await supabase
     .from('profiles')
     .update({
-      status: text,
+      status: text
     })
     .eq('id', MY_ID)
 
@@ -118,7 +111,6 @@ async function load() {
   document.getElementById('list').innerHTML =
     data.map(u => `
       <div class="list-item">
-        <div class="dot" style="background:${u.color || '#ccc'}"></div>
         <div>
           <b>${u.username}</b><br>
           <small>${u.status || 'нет статуса'}</small>
