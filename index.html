@@ -92,7 +92,6 @@ window.setStatus = async (text, color) => {
     .from('profiles')
     .update({
       status: text,
-      color: color
     })
     .eq('id', MY_ID)
 
