@@ -45,7 +45,13 @@ button {
 <body>
 
 <div>
+<button id="loginGoogle" style="background:#db4437;width:100%">
+  Войти через Google
+</button>
 
+<button id="logoutGoogle" style="background:#555;width:100%;display:none">
+  Выйти
+</button>
   <!-- МОЙ СТАТУС -->
   <div class="card status-card">
     <h3>Мой статус</h3>
@@ -123,6 +129,34 @@ async function load() {
 
 load()
 setInterval(load, 3000)
+
+  // 🔐 LOGIN GOOGLE
+document.getElementById("loginGoogle").addEventListener("click", async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "https://lausy240116.github.io/PO243/"
+    }
+  })
+})
+
+// 🚪 LOGOUT
+document.getElementById("logoutGoogle").addEventListener("click", async () => {
+  await supabase.auth.signOut()
+  location.reload()
+})
+
+// 👤 проверка сессии
+async function checkUser() {
+  const { data } = await supabase.auth.getUser()
+
+  if (data?.user) {
+    document.getElementById("loginGoogle").style.display = "none"
+    document.getElementById("logoutGoogle").style.display = "block"
+  }
+}
+
+checkUser()
 
 </script>
 
