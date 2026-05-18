@@ -119,10 +119,11 @@ button:hover {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ccc;
+  background: #ccc; /* По умолчанию серый (оффлайн) */
+  display: inline-block;
 }
 .online-dot.active {
-  background: #28a745;
+  background: #28a745; /* Зеленый (онлайн) */
 }
 
 .user-title {
@@ -192,7 +193,22 @@ window.supabase = supabase
 
 let currentMeData = null;
 
-// Смена текстового статуса
+// Функция принудительной установки онлайна при заходе на сайт
+async function setOnlineStatus(isOnline) {
+  const updates = { is_online: isOnline };
+  // Если заходим на сайт, автоматически ставим статус 'Учусь' и засекаем старт, если сессия еще не начата
+  if (isOnline) {
+    updates.status = 'Учусь';
+    updates.study_start = new Date().toISOString();
+  }
+  
+  await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', MY_ID);
+}
+
+// Смена текстового статуса вручную
 window.setStatus = async (text) => {
   const { error } = await supabase
     .from('profiles')
@@ -202,7 +218,7 @@ window.setStatus = async (text) => {
   if (error) { console.error(error) } else { load() }
 }
 
-// Старт / Завершение сессии учебы
+// Ручное завершение сессии кнопкой
 window.changeStudyState = async (start) => {
   const updates = { is_online: start };
   
@@ -210,7 +226,6 @@ window.changeStudyState = async (start) => {
     updates.study_start = new Date().toISOString();
     updates.status = 'Учусь';
   } else {
-    // При завершении — считаем дельту времени и прибавляем к общему счетчику
     if (currentMeData && currentMeData.study_start) {
       const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
       const nowSec = Math.floor(Date.now() / 1000);
@@ -230,7 +245,6 @@ window.changeStudyState = async (start) => {
   if (error) { console.error(error) } else { load() }
 }
 
-// Форматирование секунд в читаемый вид (0ч 0м 0с)
 function formatDuration(totalSeconds) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -238,7 +252,7 @@ function formatDuration(totalSeconds) {
   return `${hours}ч ${minutes}м ${seconds}с`;
 }
 
-// Загрузка и рендер данных
+// Загрузка данных
 async function load() {
   const { data, error } = await supabase
     .from('profiles')
@@ -249,21 +263,25 @@ async function load() {
     return
   }
 
-  // Рендер списка группы
+  // Рендер списка
   document.getElementById('list').innerHTML = data.map(u => {
     let liveSec = u.total_study_seconds || 0;
-    // Если пользователь сейчас учится онлайн, прибавляем время в реальном времени
-    if (u.is_online && u.study_start) {
+    const isUserOnline = u.is_online === true || u.is_online === 'true';
+
+    if (isUserOnline && u.study_start) {
       const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(u.study_start).getTime() / 1000);
       if (diff > 0) liveSec += diff;
     }
 
-    const statusIcon = u.status === 'Перерыв' ? '☕' : (u.status === 'Дома' ? '🏠' : '📝');
+    let statusIcon = '🏠';
+    if (u.status === 'Перерыв') statusIcon = '☕';
+    if (u.status === 'Учусь') statusIcon = '📝';
+    if (u.status === 'Выход') statusIcon = '🚪';
 
     return `
       <div class="list-item">
         <div class="user-info">
-          <div class="online-dot ${u.is_online ? 'active' : ''}"></div>
+          <div class="online-dot ${isUserOnline ? 'active' : ''}"></div>
           <div class="user-title">${u.username || 'Без имени'}</div>
         </div>
         <div class="user-status-info">
@@ -274,22 +292,19 @@ async function load() {
     `;
   }).join('')
 
-  // Обновление карточки текущего пользователя
   const me = data.find(u => u.id === MY_ID)
   if (me) {
     currentMeData = me;
     document.getElementById('me-name').innerText = me.username || 'Без имени';
-    
-    // Если не запущена сессия, то по умолчанию кнопка «Завершить сессию» переведет в режим «Учусь» при следующем клике
-    // Для демонстрации кнопка сделана универсальной, но интерфейс следует картинке.
   }
 }
 
-// Локальный тикер для плавной работы таймеров каждую секунду
+// Локальный таймер секунд (тикает каждую сек)
 setInterval(() => {
   if (currentMeData) {
     let currentSeconds = 0;
-    if (currentMeData.is_online && currentMeData.study_start) {
+    const isMeOnline = currentMeData.is_online === true || currentMeData.is_online === 'true';
+    if (isMeOnline && currentMeData.study_start) {
       currentSeconds = Math.floor(Date.now() / 1000) - Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
       if (currentSeconds < 0) currentSeconds = 0;
     }
@@ -297,11 +312,31 @@ setInterval(() => {
   }
 }, 1000);
 
-// Периодическое обновление данных с сервера
-load()
+// Переодический запрос в базу
 setInterval(load, 4000)
 
-// AUTH LOGIC
+// Логика авторизации + АВТО-ОНЛАЙН
+async function checkUser() {
+  const { data } = await supabase.auth.getUser()
+  if (data?.user) {
+    document.getElementById("loginGoogle").style.display = "none"
+    document.getElementById("logoutGoogle").style.display = "block"
+    
+    // 🟢 ТУТ: Как только зашли на сайт — включаем онлайн и статус «Учусь»
+    await setOnlineStatus(true);
+    load();
+  }
+}
+
+// 🔴 Авто-оффлайн при закрытии вкладки / браузера
+window.addEventListener('beforeunload', () => {
+  // Используем navigator.sendBeacon или обычный быстрый запрос, чтобы успеть убрать онлайн перед закрытием страницы
+  const json = JSON.stringify({ is_online: false, status: 'Дома' });
+  const blob = new Blob([json], { type: 'application/json' });
+  navigator.sendBeacon(`${URL}/rest/v1/profiles?id=eq.${MY_ID}`, blob);
+});
+
+// Нажатие на кнопки входа/выхода
 document.getElementById("loginGoogle").addEventListener("click", async () => {
   await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -310,17 +345,12 @@ document.getElementById("loginGoogle").addEventListener("click", async () => {
 })
 
 document.getElementById("logoutGoogle").addEventListener("click", async () => {
+  await setOnlineStatus(false); // Сначала выключаем онлайн
   await supabase.auth.signOut()
   location.reload()
 })
 
-async function checkUser() {
-  const { data } = await supabase.auth.getUser()
-  if (data?.user) {
-    document.getElementById("loginGoogle").style.display = "none"
-    document.getElementById("logoutGoogle").style.display = "block"
-  }
-}
+// Старт
 checkUser()
 </script>
 
