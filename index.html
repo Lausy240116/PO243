@@ -75,6 +75,7 @@ button:hover {
 }
 
 .btn-stop { background: #dc3545; }
+.btn-start { background: #28a745; } /* Добавили стиль для кнопки старта */
 .btn-break { background: #ffc107; color: #111; }
 .btn-logout { background: #6c757d; }
 
@@ -119,11 +120,11 @@ button:hover {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ccc; /* По умолчанию серый (оффлайн) */
+  background: #ccc; 
   display: inline-block;
 }
 .online-dot.active {
-  background: #28a745; /* Зеленый (онлайн) */
+  background: #28a745; 
 }
 
 .user-title {
@@ -168,11 +169,11 @@ button:hover {
     ⏱️ <span id="me-timer">0 сек.</span>
   </div>
 
-  <button class="btn-stop" onclick="changeStudyState(false)">⛔ Завершить сессию</button>
+  <button id="main-action-btn" class="btn-stop" onclick="toggleStudySession()">⛔ Завершить сессию</button>
   
   <div class="btn-group">
-    <button class="btn-break" onclick="setStatus('Перерыв')">☕ Перерыв</button>
-    <button class="btn-logout" onclick="setStatus('Выход')">Выход</button>
+    <button class="btn-break" onclick="setBreakStatus()">☕ Перерыв</button>
+    <button class="btn-logout" onclick="setExitStatus()">Выход</button>
   </div>
 </div>
 
@@ -193,55 +194,82 @@ window.supabase = supabase
 
 let currentMeData = null;
 
-// Функция принудительной установки онлайна при заходе на сайт
+// Помогатор для фиксации набежавшего времени перед сменой статуса
+function calculateAccumulatedSeconds() {
+  if (currentMeData && currentMeData.study_start) {
+    const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const diff = Math.max(0, nowSec - startSec);
+    return (currentMeData.total_study_seconds || 0) + diff;
+  }
+  return currentMeData ? (currentMeData.total_study_seconds || 0) : 0;
+}
+
+// Принудительный вход/инициализация
 async function setOnlineStatus(isOnline) {
   const updates = { is_online: isOnline };
-  // Если заходим на сайт, автоматически ставим статус 'Учусь' и засекаем старт, если сессия еще не начата
   if (isOnline) {
     updates.status = 'Учусь';
     updates.study_start = new Date().toISOString();
   }
   
-  await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', MY_ID);
+  await supabase.from('profiles').update(updates).eq('id', MY_ID);
 }
 
-// Смена текстового статуса вручную
-window.setStatus = async (text) => {
-  const { error } = await supabase
-    .from('profiles')
-    .update({ status: text })
-    .eq('id', MY_ID)
+// КНОПКА: Перерыв (Останавливает таймер, сохраняя набранное время)
+window.setBreakStatus = async () => {
+  if (!currentMeData) return;
+  
+  const updates = {
+    status: 'Перерыв',
+    study_start: null, // Сбрасываем старт, чтобы таймер замер
+    total_study_seconds: calculateAccumulatedSeconds() // Сохраняем всё, что набежало
+  };
 
+  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
   if (error) { console.error(error) } else { load() }
 }
 
-// Ручное завершение сессии кнопкой
-window.changeStudyState = async (start) => {
-  const updates = { is_online: start };
-  
-  if (start) {
-    updates.study_start = new Date().toISOString();
-    updates.status = 'Учусь';
-  } else {
-    if (currentMeData && currentMeData.study_start) {
-      const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
-      const nowSec = Math.floor(Date.now() / 1000);
-      const diff = Math.max(0, nowSec - startSec);
-      
-      updates.total_study_seconds = (currentMeData.total_study_seconds || 0) + diff;
-    }
-    updates.study_start = null;
+// КНОПКА: Выход (Сбрасывает таймер полностью в 0 и ставит статус Выход)
+window.setExitStatus = async () => {
+  const updates = {
+    status: 'Выход',
+    study_start: null,
+    total_study_seconds: 0 // СБРОС ТАЙМЕРА В 0
+  };
+
+  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
+  if (error) { console.error(error) } else { load() }
+}
+
+// КНОПКА: Главная большая кнопка (Старт / Завершить)
+window.toggleStudySession = async () => {
+  if (!currentMeData) return;
+
+  const isMeOnline = currentMeData.is_online === true || currentMeData.is_online === 'true';
+  const isStudying = isMeOnline && currentMeData.status === 'Учусь';
+
+  const updates = {};
+
+  if (isStudying) {
+    // Если учился — завершаем сессию, сохраняем время, выходим в офлайн
+    updates.is_online = false;
     updates.status = 'Дома';
+    updates.total_study_seconds = calculateAccumulatedSeconds();
+    updates.study_start = null;
+  } else {
+    // Если был на перерыве, дома или выходе — запускаем (или продолжаем) учебу
+    updates.is_online = true;
+    updates.status = 'Учусь';
+    updates.study_start = new Date().toISOString(); // Новый отсчет пошел
+    
+    // Если статус был "Выход", то при старте зануляем таймер (на всякий случай)
+    if (currentMeData.status === 'Выход') {
+      updates.total_study_seconds = 0;
+    }
   }
 
-  const { error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', MY_ID)
-
+  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
   if (error) { console.error(error) } else { load() }
 }
 
@@ -254,21 +282,16 @@ function formatDuration(totalSeconds) {
 
 // Загрузка данных
 async function load() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
+  const { data, error } = await supabase.from('profiles').select('*');
+  if (error) { console.error(error); return; }
 
-  if (error) {
-    console.error(error)
-    return
-  }
-
-  // Рендер списка
+  // Рендер списка группы
   document.getElementById('list').innerHTML = data.map(u => {
     let liveSec = u.total_study_seconds || 0;
     const isUserOnline = u.is_online === true || u.is_online === 'true';
 
-    if (isUserOnline && u.study_start) {
+    // Живой подсчет времени в списке работает, только если статус "Учусь" и идет отсчет
+    if (isUserOnline && u.study_start && u.status === 'Учусь') {
       const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(u.study_start).getTime() / 1000);
       if (diff > 0) liveSec += diff;
     }
@@ -290,68 +313,79 @@ async function load() {
         </div>
       </div>
     `;
-  }).join('')
+  }).join('');
 
-  const me = data.find(u => u.id === MY_ID)
+  const me = data.find(u => u.id === MY_ID);
   if (me) {
     currentMeData = me;
     document.getElementById('me-name').innerText = me.username || 'Без имени';
+    
+    // Меняем внешний вид главной кнопки в зависимости от текущего состояния
+    const mainBtn = document.getElementById('main-action-btn');
+    const isMeOnline = me.is_online === true || me.is_online === 'true';
+    
+    if (isMeOnline && me.status === 'Учусь') {
+      mainBtn.className = "btn-stop";
+      mainBtn.innerText = "⛔ Завершить сессию";
+    } else {
+      mainBtn.className = "btn-start";
+      mainBtn.innerText = "▶️ Начать / Продолжить учебу";
+    }
   }
 }
 
-// Локальный таймер секунд (тикает каждую сек)
+// Локальный таймер (обновление каждую секунду на экране)
 setInterval(() => {
   if (currentMeData) {
-    let currentSeconds = 0;
+    let liveSec = currentMeData.total_study_seconds || 0;
     const isMeOnline = currentMeData.is_online === true || currentMeData.is_online === 'true';
-    if (isMeOnline && currentMeData.study_start) {
-      currentSeconds = Math.floor(Date.now() / 1000) - Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
-      if (currentSeconds < 0) currentSeconds = 0;
+    
+    // Секунды тикают, только если мы онлайн И статус именно "Учусь"
+    if (isMeOnline && currentMeData.study_start && currentMeData.status === 'Учусь') {
+      const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+      if (diff > 0) liveSec += diff;
     }
-    document.getElementById('me-timer').innerText = `${currentSeconds} сек.`;
+    
+    // Отображаем красивый формат времени вместо просто секунд
+    document.getElementById('me-timer').innerText = formatDuration(liveSec);
   }
 }, 1000);
 
-// Переодический запрос в базу
-setInterval(load, 4000)
+setInterval(load, 4000);
 
-// Логика авторизации + АВТО-ОНЛАЙН
 async function checkUser() {
-  const { data } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getUser();
   if (data?.user) {
-    document.getElementById("loginGoogle").style.display = "none"
-    document.getElementById("logoutGoogle").style.display = "block"
+    document.getElementById("loginGoogle").style.display = "none";
+    document.getElementById("logoutGoogle").style.display = "block";
     
-    // 🟢 ТУТ: Как только зашли на сайт — включаем онлайн и статус «Учусь»
     await setOnlineStatus(true);
     load();
   }
 }
 
-// 🔴 Авто-оффлайн при закрытии вкладки / браузера
 window.addEventListener('beforeunload', () => {
-  // Используем navigator.sendBeacon или обычный быстрый запрос, чтобы успеть убрать онлайн перед закрытием страницы
-  const json = JSON.stringify({ is_online: false, status: 'Дома' });
+  const finalSeconds = calculateAccumulatedSeconds();
+  const json = JSON.stringify({ is_online: false, status: 'Дома', total_study_seconds: finalSeconds, study_start: null });
   const blob = new Blob([json], { type: 'application/json' });
   navigator.sendBeacon(`${URL}/rest/v1/profiles?id=eq.${MY_ID}`, blob);
 });
 
-// Нажатие на кнопки входа/выхода
 document.getElementById("loginGoogle").addEventListener("click", async () => {
   await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: "https://lausy240116.github.io/PO243/" }
   })
-})
+});
 
 document.getElementById("logoutGoogle").addEventListener("click", async () => {
-  await setOnlineStatus(false); // Сначала выключаем онлайн
-  await supabase.auth.signOut()
-  location.reload()
-})
+  const finalSeconds = calculateAccumulatedSeconds();
+  await supabase.from('profiles').update({ is_online: false, status: 'Дома', total_study_seconds: finalSeconds, study_start: null }).eq('id', MY_ID);
+  await supabase.auth.signOut();
+  location.reload();
+});
 
-// Старт
-checkUser()
+checkUser();
 </script>
 
 </body>
