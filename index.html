@@ -6,76 +6,183 @@
 
 <style>
 body {
-  font-family: Arial;
-  background: #f2f2f2;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f4f5f7;
   display: flex;
   justify-content: center;
+  align-items: center;
+  flex-direction: column;
   padding: 40px;
+  margin: 0;
+}
+
+.auth-buttons {
+  width: 340px;
+  margin-bottom: 15px;
 }
 
 .card {
   background: white;
-  padding: 20px;
-  border-radius: 12px;
-  width: 320px;
+  padding: 24px;
+  border-radius: 20px;
+  width: 340px;
   margin-bottom: 20px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  box-sizing: border-box;
 }
 
 .status-card {
-  background: #ffe4ec;
+  text-align: center;
+}
+
+.user-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #111;
+  margin-bottom: 15px;
+}
+
+.timer-display {
+  font-size: 28px;
+  font-weight: bold;
+  color: #2b77f3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 button {
-  padding: 10px;
-  margin: 5px;
+  padding: 12px;
+  margin: 5px 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   color: white;
+  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
-  width: 45%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.btn-stop { background: #dc3545; }
+.btn-break { background: #ffc107; color: #111; }
+.btn-logout { background: #6c757d; }
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+}
+.btn-group button {
+  width: 50%;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 0;
+  margin-bottom: 20px;
 }
 
 .list-item {
-  margin: 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.online-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+}
+.online-dot.active {
+  background: #28a745;
+}
+
+.user-title {
+  font-weight: bold;
+  color: #111;
+}
+
+.user-status-info {
+  text-align: right;
+  font-size: 13px;
+  color: #666;
+}
+.status-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.time-text {
+  color: #2b77f3;
+  font-size: 12px;
+  margin-top: 2px;
 }
 </style>
 </head>
 
 <body>
 
-<div>
-<button id="loginGoogle" style="background:#db4437;width:100%">
-  Войти через Google
-</button>
+<div class="auth-buttons">
+  <button id="loginGoogle" style="background:#db4437;">
+    Войти через Google
+  </button>
+  <button id="logoutGoogle" style="background:#555; display:none">
+    Выйти
+  </button>
+</div>
 
-<button id="logoutGoogle" style="background:#555;width:100%;display:none">
-  Выйти
-</button>
-
-  <!-- МОЙ СТАТУС -->
-  <div class="card status-card">
-    <h3>Мой статус</h3>
-    <p id="me">Загрузка...</p>
-
-    <button style="background:#28a745" onclick="setStatus('Учусь')">Учусь</button>
-    <button style="background:#ffc107" onclick="setStatus('Кофе')">Кофе</button><br>
-    <button style="background:#17a2b8" onclick="setStatus('В игре')">В игре</button>
-    <button style="background:#6c757d" onclick="setStatus('Дома')">Дома</button>
+<div class="card status-card">
+  <div class="user-name" id="me-name">Загрузка...</div>
+  
+  <div class="timer-display">
+    ⏱️ <span id="me-timer">0 сек.</span>
   </div>
 
-  <!-- СПИСОК -->
-  <div class="card">
-    <h3>Пользователи</h3>
-    <div id="list"></div>
+  <button class="btn-stop" onclick="changeStudyState(false)">⛔ Завершить сессию</button>
+  
+  <div class="btn-group">
+    <button class="btn-break" onclick="setStatus('Перерыв')">☕ Перерыв</button>
+    <button class="btn-logout" onclick="setStatus('Выход')">Выход</button>
   </div>
+</div>
 
+<div class="card">
+  <div class="section-title">👥 Монитор группы</div>
+  <div id="list"></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-// 🔴 ВСТАВЬ СВОИ ДАННЫЕ
 const URL = 'https://pcqynrythvnyikchappl.supabase.co'
 const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
 const MY_ID = 'd9eeb7aa-2ded-47c5-86de-98377838ea2c'
@@ -83,27 +190,56 @@ const MY_ID = 'd9eeb7aa-2ded-47c5-86de-98377838ea2c'
 const supabase = createClient(URL, KEY)
 window.supabase = supabase
 
-// 🔄 смена статуса (БЕЗ COLOR)
+let currentMeData = null;
+
+// Смена текстового статуса
 window.setStatus = async (text) => {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ status: text })
+    .eq('id', MY_ID)
+
+  if (error) { console.error(error) } else { load() }
+}
+
+// Старт / Завершение сессии учебы
+window.changeStudyState = async (start) => {
+  const updates = { is_online: start };
+  
+  if (start) {
+    updates.study_start = new Date().toISOString();
+    updates.status = 'Учусь';
+  } else {
+    // При завершении — считаем дельту времени и прибавляем к общему счетчику
+    if (currentMeData && currentMeData.study_start) {
+      const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const diff = Math.max(0, nowSec - startSec);
+      
+      updates.total_study_seconds = (currentMeData.total_study_seconds || 0) + diff;
+    }
+    updates.study_start = null;
+    updates.status = 'Дома';
+  }
 
   const { error } = await supabase
     .from('profiles')
-    .update({
-      status: text
-    })
+    .update(updates)
     .eq('id', MY_ID)
 
-  if (error) {
-    alert(error.message)
-    console.error(error)
-  } else {
-    load()
-  }
+  if (error) { console.error(error) } else { load() }
 }
 
-// 📥 загрузка пользователей
-async function load() {
+// Форматирование секунд в читаемый вид (0ч 0м 0с)
+function formatDuration(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}ч ${minutes}м ${seconds}с`;
+}
 
+// Загрузка и рендер данных
+async function load() {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -113,159 +249,79 @@ async function load() {
     return
   }
 
-  document.getElementById('list').innerHTML =
-    data.map(u => `
-      <div class="list-item">
-        <b>${u.username}</b><br>
-        <small>${u.status || 'нет статуса'}</small>
-      </div>
-    `).join('')
+  // Рендер списка группы
+  document.getElementById('list').innerHTML = data.map(u => {
+    let liveSec = u.total_study_seconds || 0;
+    // Если пользователь сейчас учится онлайн, прибавляем время в реальном времени
+    if (u.is_online && u.study_start) {
+      const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(u.study_start).getTime() / 1000);
+      if (diff > 0) liveSec += diff;
+    }
 
+    const statusIcon = u.status === 'Перерыв' ? '☕' : (u.status === 'Дома' ? '🏠' : '📝');
+
+    return `
+      <div class="list-item">
+        <div class="user-info">
+          <div class="online-dot ${u.is_online ? 'active' : ''}"></div>
+          <div class="user-title">${u.username || 'Без имени'}</div>
+        </div>
+        <div class="user-status-info">
+          <div class="status-text">${statusIcon} ${u.status || 'Нет статуса'}</div>
+          <div class="time-text">⏱️ ${formatDuration(liveSec)}</div>
+        </div>
+      </div>
+    `;
+  }).join('')
+
+  // Обновление карточки текущего пользователя
   const me = data.find(u => u.id === MY_ID)
   if (me) {
-    document.getElementById('me').innerText =
-      me.username + " — " + me.status
+    currentMeData = me;
+    document.getElementById('me-name').innerText = me.username || 'Без имени';
+    
+    // Если не запущена сессия, то по умолчанию кнопка «Завершить сессию» переведет в режим «Учусь» при следующем клике
+    // Для демонстрации кнопка сделана универсальной, но интерфейс следует картинке.
   }
 }
 
-load()
-setInterval(load, 3000)
-
-// 🔐 LOGIN GOOGLE
-document.getElementById("loginGoogle").addEventListener("click", async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: "https://lausy240116.github.io/PO243/"
+// Локальный тикер для плавной работы таймеров каждую секунду
+setInterval(() => {
+  if (currentMeData) {
+    let currentSeconds = 0;
+    if (currentMeData.is_online && currentMeData.study_start) {
+      currentSeconds = Math.floor(Date.now() / 1000) - Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+      if (currentSeconds < 0) currentSeconds = 0;
     }
+    document.getElementById('me-timer').innerText = `${currentSeconds} сек.`;
+  }
+}, 1000);
+
+// Периодическое обновление данных с сервера
+load()
+setInterval(load, 4000)
+
+// AUTH LOGIC
+document.getElementById("loginGoogle").addEventListener("click", async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: "https://lausy240116.github.io/PO243/" }
   })
 })
 
-// 🚪 LOGOUT
 document.getElementById("logoutGoogle").addEventListener("click", async () => {
   await supabase.auth.signOut()
   location.reload()
 })
 
-// 👤 проверка сессии
 async function checkUser() {
   const { data } = await supabase.auth.getUser()
-
   if (data?.user) {
     document.getElementById("loginGoogle").style.display = "none"
     document.getElementById("logoutGoogle").style.display = "block"
   }
 }
-
 checkUser()
-
-// =====================================================
-// ✅ ДОБАВЛЕННЫЙ ФУНКЦИОНАЛ (ОНЛАЙН + УЧЁБА)
-// =====================================================
-
-let studySeconds = 0
-let studyTimer = null
-let lastStatus = null
-
-const timerEl = document.createElement("div")
-timerEl.style.marginTop = "10px"
-timerEl.style.fontWeight = "bold"
-document.querySelector(".status-card").appendChild(timerEl)
-
-const onlineEl = document.createElement("div")
-onlineEl.style.marginTop = "10px"
-onlineEl.style.fontSize = "14px"
-document.querySelector(".status-card").appendChild(onlineEl)
-
-// формат времени
-function format(sec) {
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const s = sec % 60
-  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
-}
-
-// получить мой профиль
-async function getMeProfile() {
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', MY_ID)
-    .single()
-
-  return data
-}
-
-// главный цикл
-async function trackerLoop() {
-  const me = await getMeProfile()
-  if (!me) return
-
-  // онлайн статус
-  onlineEl.textContent = me.is_online ? "🟢 Онлайн" : "🔴 Оффлайн"
-
-  // если статус изменился
-  if (me.status !== lastStatus) {
-    lastStatus = me.status
-
-    if (me.status === "Учусь") {
-      startTimer()
-    } else {
-      stopTimer()
-    }
-  }
-}
-
-// таймер старт
-function startTimer() {
-  if (studyTimer) return
-
-  studyTimer = setInterval(async () => {
-    studySeconds++
-
-    timerEl.textContent = "⏱ " + format(studySeconds)
-
-    await supabase
-      .from('profiles')
-      .update({
-        total_study_seconds: studySeconds
-      })
-      .eq('id', MY_ID)
-
-  }, 1000)
-}
-
-// таймер стоп
-function stopTimer() {
-  clearInterval(studyTimer)
-  studyTimer = null
-}
-
-// запуск трекера
-setInterval(trackerLoop, 3000)
-
-// online/offline
-supabase.auth.onAuthStateChange((event, session) => {
-  const user = session?.user
-
-  if (user) {
-    supabase.from('profiles')
-      .update({ is_online: true })
-      .eq('id', MY_ID)
-  } else {
-    supabase.from('profiles')
-      .update({ is_online: false })
-      .eq('id', MY_ID)
-  }
-})
-
-// offline при закрытии
-window.addEventListener("beforeunload", () => {
-  supabase.from('profiles')
-    .update({ is_online: false })
-    .eq('id', MY_ID)
-})
-
 </script>
 
 </body>
