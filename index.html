@@ -52,6 +52,7 @@ button {
 <button id="logoutGoogle" style="background:#555;width:100%;display:none">
   Выйти
 </button>
+
   <!-- МОЙ СТАТУС -->
   <div class="card status-card">
     <h3>Мой статус</h3>
@@ -130,7 +131,7 @@ async function load() {
 load()
 setInterval(load, 3000)
 
-  // 🔐 LOGIN GOOGLE
+// 🔐 LOGIN GOOGLE
 document.getElementById("loginGoogle").addEventListener("click", async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
@@ -157,6 +158,113 @@ async function checkUser() {
 }
 
 checkUser()
+
+// =====================================================
+// ✅ ДОБАВЛЕННЫЙ ФУНКЦИОНАЛ (ОНЛАЙН + УЧЁБА)
+// =====================================================
+
+let studySeconds = 0
+let studyTimer = null
+let lastStatus = null
+
+const timerEl = document.createElement("div")
+timerEl.style.marginTop = "10px"
+timerEl.style.fontWeight = "bold"
+document.querySelector(".status-card").appendChild(timerEl)
+
+const onlineEl = document.createElement("div")
+onlineEl.style.marginTop = "10px"
+onlineEl.style.fontSize = "14px"
+document.querySelector(".status-card").appendChild(onlineEl)
+
+// формат времени
+function format(sec) {
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const s = sec % 60
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
+}
+
+// получить мой профиль
+async function getMeProfile() {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', MY_ID)
+    .single()
+
+  return data
+}
+
+// главный цикл
+async function trackerLoop() {
+  const me = await getMeProfile()
+  if (!me) return
+
+  // онлайн статус
+  onlineEl.textContent = me.is_online ? "🟢 Онлайн" : "🔴 Оффлайн"
+
+  // если статус изменился
+  if (me.status !== lastStatus) {
+    lastStatus = me.status
+
+    if (me.status === "Учусь") {
+      startTimer()
+    } else {
+      stopTimer()
+    }
+  }
+}
+
+// таймер старт
+function startTimer() {
+  if (studyTimer) return
+
+  studyTimer = setInterval(async () => {
+    studySeconds++
+
+    timerEl.textContent = "⏱ " + format(studySeconds)
+
+    await supabase
+      .from('profiles')
+      .update({
+        total_study_seconds: studySeconds
+      })
+      .eq('id', MY_ID)
+
+  }, 1000)
+}
+
+// таймер стоп
+function stopTimer() {
+  clearInterval(studyTimer)
+  studyTimer = null
+}
+
+// запуск трекера
+setInterval(trackerLoop, 3000)
+
+// online/offline
+supabase.auth.onAuthStateChange((event, session) => {
+  const user = session?.user
+
+  if (user) {
+    supabase.from('profiles')
+      .update({ is_online: true })
+      .eq('id', MY_ID)
+  } else {
+    supabase.from('profiles')
+      .update({ is_online: false })
+      .eq('id', MY_ID)
+  }
+})
+
+// offline при закрытии
+window.addEventListener("beforeunload", () => {
+  supabase.from('profiles')
+    .update({ is_online: false })
+    .eq('id', MY_ID)
+})
 
 </script>
 
