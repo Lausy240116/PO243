@@ -39,7 +39,7 @@ body {
   font-size: 20px;
   font-weight: bold;
   color: #111;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .timer-display {
@@ -65,10 +65,26 @@ button {
   width: 100%;
 }
 
-.btn-stop { background: #dc3545; }
-.btn-start { background: #28a745; }
-.btn-break { background: #ffc107; color: #111; }
-.btn-logout { background: #6c757d; }
+button:hover {
+  opacity: 0.9;
+}
+
+.btn-stop {
+  background: #dc3545;
+}
+
+.btn-start {
+  background: #28a745;
+}
+
+.btn-break {
+  background: #ffc107;
+  color: #111;
+}
+
+.btn-logout {
+  background: #6c757d;
+}
 
 .btn-group {
   display: flex;
@@ -82,12 +98,14 @@ button {
 .section-title {
   font-size: 16px;
   font-weight: bold;
-  margin-bottom: 20px;
+  color: #111;
+  margin-bottom: 15px;
 }
 
 .list-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid #eee;
 }
@@ -98,6 +116,7 @@ button {
   border-radius: 50%;
   background: #ccc;
   display: inline-block;
+  margin-right: 8px;
 }
 
 .online-dot.active {
@@ -109,11 +128,40 @@ button {
   font-size: 12px;
 }
 
+#chat-box {
+  height: 300px;
+  overflow-y: auto;
+  background: #f7f7f7;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #e2e2e2;
+}
+
 .chat-message {
-  margin-bottom: 12px;
+  background: white;
   padding: 10px;
   border-radius: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.chat-user {
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: #2b77f3;
+}
+
+.chat-text {
+  word-break: break-word;
+}
+
+.achievement {
   background: #f7f7f7;
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 </style>
 </head>
@@ -131,22 +179,31 @@ button {
 </div>
 
 <div class="card status-card">
+
   <div class="user-name" id="me-name">Загрузка...</div>
 
-  <div id="my-achievements" style="margin-bottom:15px;"></div>
+  <div id="my-achievements"></div>
 
   <div class="timer-display">
     ⏱️ <span id="me-timer">0 сек.</span>
   </div>
 
-  <button id="main-action-btn" class="btn-stop" onclick="toggleStudySession()">
+  <button id="main-action-btn"
+          class="btn-stop"
+          onclick="toggleStudySession()">
     ⛔ Завершить сессию
   </button>
 
   <div class="btn-group">
-    <button class="btn-break" onclick="setBreakStatus()">☕ Перерыв</button>
-    <button class="btn-logout" onclick="setExitStatus()">Выход</button>
+    <button class="btn-break" onclick="setBreakStatus()">
+      ☕ Перерыв
+    </button>
+
+    <button class="btn-logout" onclick="setExitStatus()">
+      Выход
+    </button>
   </div>
+
 </div>
 
 <div class="card">
@@ -160,11 +217,13 @@ button {
 </div>
 
 <div class="card">
+
   <div class="section-title">💬 Общий чат</div>
 
-  <div id="chat-box" style="max-height:300px; overflow:auto; margin-bottom:15px;"></div>
+  <div id="chat-box"></div>
 
   <input
+    type="text"
     id="chat-input"
     placeholder="Введите сообщение..."
     style="
@@ -180,10 +239,13 @@ button {
   <button class="btn-start" onclick="sendMessage()">
     Отправить
   </button>
+
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+import { createClient }
+from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const URL = 'https://pcqynrythvnyikchappl.supabase.co'
 const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
@@ -194,27 +256,44 @@ const supabase = createClient(URL, KEY)
 let currentMeData = null;
 
 function calculateAccumulatedSeconds() {
+
   if (currentMeData && currentMeData.study_start) {
-    const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
-    const nowSec = Math.floor(Date.now() / 1000);
-    const diff = Math.max(0, nowSec - startSec);
+
+    const startSec =
+      Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+
+    const nowSec =
+      Math.floor(Date.now() / 1000);
+
+    const diff =
+      Math.max(0, nowSec - startSec);
+
     return (currentMeData.total_study_seconds || 0) + diff;
   }
 
-  return currentMeData ? (currentMeData.total_study_seconds || 0) : 0;
+  return currentMeData
+    ? (currentMeData.total_study_seconds || 0)
+    : 0;
 }
 
 function formatDuration(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+
+  const hours =
+    Math.floor(totalSeconds / 3600);
+
+  const minutes =
+    Math.floor((totalSeconds % 3600) / 60);
+
+  const seconds =
+    totalSeconds % 60;
 
   return `${hours}ч ${minutes}м ${seconds}с`;
 }
 
 async function addAchievement(code) {
 
-  const current = currentMeData.achievements || [];
+  const current =
+    currentMeData.achievements || [];
 
   if (current.includes(code)) return;
 
@@ -222,7 +301,9 @@ async function addAchievement(code) {
 
   await supabase
     .from('profiles')
-    .update({ achievements: updated })
+    .update({
+      achievements: updated
+    })
     .eq('id', MY_ID);
 
   load();
@@ -239,50 +320,61 @@ function renderAchievements() {
     first_session: '🎯 Первый шаг'
   };
 
-  const achievements = currentMeData.achievements || [];
+  const achievements =
+    currentMeData.achievements || [];
 
   document.getElementById('my-achievements').innerHTML =
     achievements.map(a => `
-      <div>${map[a]}</div>
+      <div class="achievement">
+        ${map[a]}
+      </div>
     `).join('');
 }
 
 async function setOnlineStatus(isOnline) {
 
-  const updates = { is_online: isOnline };
+  const updates = {
+    is_online: isOnline
+  };
 
   if (isOnline) {
     updates.status = 'Учусь';
     updates.study_start = new Date().toISOString();
   }
 
-  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+  await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', MY_ID);
 }
 
 window.setBreakStatus = async () => {
 
   if (!currentMeData) return;
 
-  const updates = {
-    status: 'Перерыв',
-    study_start: null,
-    total_study_seconds: calculateAccumulatedSeconds()
-  };
-
-  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+  await supabase
+    .from('profiles')
+    .update({
+      status: 'Перерыв',
+      study_start: null,
+      total_study_seconds:
+        calculateAccumulatedSeconds()
+    })
+    .eq('id', MY_ID);
 
   load();
 }
 
 window.setExitStatus = async () => {
 
-  const updates = {
-    status: 'Выход',
-    study_start: null,
-    total_study_seconds: 0
-  };
-
-  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+  await supabase
+    .from('profiles')
+    .update({
+      status: 'Выход',
+      study_start: null,
+      total_study_seconds: 0
+    })
+    .eq('id', MY_ID);
 
   load();
 }
@@ -303,7 +395,8 @@ window.toggleStudySession = async () => {
 
   if (isStudying) {
 
-    const total = calculateAccumulatedSeconds();
+    const total =
+      calculateAccumulatedSeconds();
 
     if (total >= 7200) {
       addAchievement('marathon');
@@ -333,7 +426,10 @@ window.toggleStudySession = async () => {
     }
   }
 
-  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+  await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', MY_ID);
 
   load();
 }
@@ -349,47 +445,79 @@ function renderTopStudents(data) {
 
   document.getElementById('top-students').innerHTML =
     sorted.map((u, index) => `
+
       <div class="list-item">
-        <div>#${index + 1} ${u.username}</div>
+
+        <div>
+          #${index + 1} ${u.username}
+        </div>
 
         <div class="time-text">
           ${formatDuration(u.total_study_seconds || 0)}
         </div>
+
       </div>
+
     `).join('');
 }
 
 async function loadMessages() {
 
-  const { data } = await supabase
-    .from('messages')
-    .select('*')
-    .order('created_at', { ascending: true });
+  const { data, error } =
+    await supabase
+      .from('messages')
+      .select('*')
+      .order('created_at', {
+        ascending: true
+      });
 
-  document.getElementById('chat-box').innerHTML =
-    data.map(m => `
-      <div class="chat-message">
-        <b>${m.username}</b><br>
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const chatBox =
+    document.getElementById('chat-box');
+
+  chatBox.innerHTML = data.map(m => `
+
+    <div class="chat-message">
+
+      <div class="chat-user">
+        ${m.username}
+      </div>
+
+      <div class="chat-text">
         ${m.text}
       </div>
-    `).join('');
+
+    </div>
+
+  `).join('');
+
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 window.sendMessage = async () => {
 
-  const input = document.getElementById('chat-input');
+  const input =
+    document.getElementById('chat-input');
 
-  const text = input.value.trim();
+  const text =
+    input.value.trim();
 
   if (!text) return;
 
-  await supabase.from('messages').insert({
-    user_id: MY_ID,
-    username: currentMeData.username,
-    text
-  });
+  await supabase
+    .from('messages')
+    .insert({
+      user_id: MY_ID,
+      username: currentMeData.username,
+      text
+    });
 
-  const newCount = (currentMeData.messages_count || 0) + 1;
+  const newCount =
+    (currentMeData.messages_count || 0) + 1;
 
   await supabase
     .from('profiles')
@@ -412,7 +540,9 @@ window.sendMessage = async () => {
 async function load() {
 
   const { data, error } =
-    await supabase.from('profiles').select('*');
+    await supabase
+      .from('profiles')
+      .select('*');
 
   if (error) {
     console.error(error);
@@ -424,7 +554,8 @@ async function load() {
   document.getElementById('list').innerHTML =
     data.map(u => {
 
-      let liveSec = u.total_study_seconds || 0;
+      let liveSec =
+        u.total_study_seconds || 0;
 
       const isUserOnline =
         u.is_online === true ||
@@ -440,10 +571,13 @@ async function load() {
           Math.floor(Date.now() / 1000) -
           Math.floor(new Date(u.study_start).getTime() / 1000);
 
-        if (diff > 0) liveSec += diff;
+        if (diff > 0) {
+          liveSec += diff;
+        }
       }
 
       return `
+
         <div class="list-item">
 
           <div>
@@ -456,10 +590,12 @@ async function load() {
           </div>
 
         </div>
+
       `;
     }).join('');
 
-  const me = data.find(u => u.id === MY_ID);
+  const me =
+    data.find(u => u.id === MY_ID);
 
   if (me) {
 
@@ -477,15 +613,22 @@ async function load() {
       me.is_online === true ||
       me.is_online === 'true';
 
-    if (isMeOnline && me.status === 'Учусь') {
+    if (
+      isMeOnline &&
+      me.status === 'Учусь'
+    ) {
 
       mainBtn.className = "btn-stop";
-      mainBtn.innerText = "⛔ Завершить сессию";
+
+      mainBtn.innerText =
+        "⛔ Завершить сессию";
 
     } else {
 
       mainBtn.className = "btn-start";
-      mainBtn.innerText = "▶️ Начать / Продолжить учебу";
+
+      mainBtn.innerText =
+        "▶️ Начать / Продолжить учебу";
     }
   }
 }
@@ -511,7 +654,9 @@ setInterval(() => {
         Math.floor(Date.now() / 1000) -
         Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
 
-      if (diff > 0) liveSec += diff;
+      if (diff > 0) {
+        liveSec += diff;
+      }
     }
 
     document.getElementById('me-timer').innerText =
@@ -524,13 +669,16 @@ setInterval(load, 4000);
 
 async function checkUser() {
 
-  const { data } = await supabase.auth.getUser();
+  const { data } =
+    await supabase.auth.getUser();
 
   if (data?.user) {
 
-    document.getElementById("loginGoogle").style.display = "none";
+    document.getElementById("loginGoogle").style.display =
+      "none";
 
-    document.getElementById("logoutGoogle").style.display = "block";
+    document.getElementById("logoutGoogle").style.display =
+      "block";
 
     await setOnlineStatus(true);
 
@@ -546,22 +694,27 @@ document.getElementById("loginGoogle")
   await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "https://lausy240116.github.io/PO243/"
+      redirectTo:
+        "https://lausy240116.github.io/PO243/"
     }
-  })
+  });
 });
 
 document.getElementById("logoutGoogle")
 .addEventListener("click", async () => {
 
-  const finalSeconds = calculateAccumulatedSeconds();
+  const finalSeconds =
+    calculateAccumulatedSeconds();
 
-  await supabase.from('profiles').update({
-    is_online: false,
-    status: 'Дома',
-    total_study_seconds: finalSeconds,
-    study_start: null
-  }).eq('id', MY_ID);
+  await supabase
+    .from('profiles')
+    .update({
+      is_online: false,
+      status: 'Дома',
+      total_study_seconds: finalSeconds,
+      study_start: null
+    })
+    .eq('id', MY_ID);
 
   await supabase.auth.signOut();
 
@@ -584,6 +737,7 @@ supabase
 .subscribe();
 
 checkUser();
+
 </script>
 
 </body>
