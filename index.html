@@ -277,7 +277,17 @@ function renderAchievements() {
 
 /* ===================== CORE ===================== */
 
-window.toggleStudySession = async () => {
+const sessionSeconds =
+  currentMeData.study_start
+    ? Math.floor(Date.now() / 1000) -
+      Math.floor(new Date(currentMeData.study_start).getTime() / 1000)
+    : 0;
+
+const total =
+  Number(currentMeData.total_study_seconds || 0) + sessionSeconds;
+
+updates.total_study_seconds = total;
+  
 
   if (!currentMeData) return;
 
