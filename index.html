@@ -320,15 +320,41 @@ function renderAchievements() {
     first_session: '🎯 Первый шаг'
   };
 
-  const achievements =
-    currentMeData.achievements || [];
+  let achievements = currentMeData.achievements;
 
-  document.getElementById('my-achievements').innerHTML =
-    achievements.map(a => `
+  // FIX: Supabase может вернуть null / string / undefined
+  if (!achievements) {
+    achievements = [];
+  }
+
+  if (typeof achievements === 'string') {
+    try {
+      achievements = JSON.parse(achievements);
+    } catch (e) {
+      achievements = [];
+    }
+  }
+
+  if (!Array.isArray(achievements)) {
+    achievements = [];
+  }
+
+  const container = document.getElementById('my-achievements');
+
+  if (achievements.length === 0) {
+    container.innerHTML = `
       <div class="achievement">
-        ${map[a]}
+        Ачивок пока нет
       </div>
-    `).join('');
+    `;
+    return;
+  }
+
+  container.innerHTML = achievements.map(a => `
+    <div class="achievement">
+      ${map[a] || a}
+    </div>
+  `).join('');
 }
 
 async function setOnlineStatus(isOnline) {
