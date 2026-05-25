@@ -69,22 +69,10 @@ button:hover {
   opacity: 0.9;
 }
 
-.btn-stop {
-  background: #dc3545;
-}
-
-.btn-start {
-  background: #28a745;
-}
-
-.btn-break {
-  background: #ffc107;
-  color: #111;
-}
-
-.btn-logout {
-  background: #6c757d;
-}
+.btn-stop { background: #dc3545; }
+.btn-start { background: #28a745; }
+.btn-break { background: #ffc107; color: #111; }
+.btn-logout { background: #6c757d; }
 
 .btn-group {
   display: flex;
@@ -217,35 +205,22 @@ button:hover {
 </div>
 
 <div class="card">
-
   <div class="section-title">💬 Общий чат</div>
 
   <div id="chat-box"></div>
 
-  <input
-    type="text"
-    id="chat-input"
+  <input type="text" id="chat-input"
     placeholder="Введите сообщение..."
-    style="
-      width:100%;
-      padding:12px;
-      border-radius:12px;
-      border:1px solid #ddd;
-      margin-bottom:10px;
-      box-sizing:border-box;
-    "
-  >
+    style="width:100%;padding:12px;border-radius:12px;border:1px solid #ddd;margin-bottom:10px;box-sizing:border-box;">
 
   <button class="btn-start" onclick="sendMessage()">
     Отправить
   </button>
-
 </div>
 
 <script type="module">
 
-import { createClient }
-from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const URL = 'https://pcqynrythvnyikchappl.supabase.co'
 const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
@@ -255,59 +230,23 @@ const supabase = createClient(URL, KEY)
 
 let currentMeData = null;
 
-function calculateAccumulatedSeconds() {
+/* ===================== FIX TIME ===================== */
 
-  if (currentMeData && currentMeData.study_start) {
+function getSessionSeconds() {
+  if (!currentMeData?.study_start) return 0;
 
-    const startSec =
-      Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
-
-    const nowSec =
-      Math.floor(Date.now() / 1000);
-
-    const diff =
-      Math.max(0, nowSec - startSec);
-
-    return (currentMeData.total_study_seconds || 0) + diff;
-  }
-
-  return currentMeData
-    ? (currentMeData.total_study_seconds || 0)
-    : 0;
+  return Math.max(
+    0,
+    Math.floor(Date.now() / 1000) -
+    Math.floor(new Date(currentMeData.study_start).getTime() / 1000)
+  );
 }
 
-function formatDuration(totalSeconds) {
-
-  const hours =
-    Math.floor(totalSeconds / 3600);
-
-  const minutes =
-    Math.floor((totalSeconds % 3600) / 60);
-
-  const seconds =
-    totalSeconds % 60;
-
-  return `${hours}ч ${minutes}м ${seconds}с`;
+function getTotalSeconds() {
+  return (currentMeData?.total_study_seconds || 0) + getSessionSeconds();
 }
 
-async function addAchievement(code) {
-
-  const current =
-    currentMeData.achievements || [];
-
-  if (current.includes(code)) return;
-
-  const updated = [...current, code];
-
-  await supabase
-    .from('profiles')
-    .update({
-      achievements: updated
-    })
-    .eq('id', MY_ID);
-
-  load();
-}
+/* ===================== ACHIEVEMENTS FIX ===================== */
 
 function renderAchievements() {
 
@@ -322,447 +261,109 @@ function renderAchievements() {
 
   let achievements = currentMeData.achievements;
 
-  // FIX: Supabase может вернуть null / string / undefined
-  if (!achievements) {
-    achievements = [];
-  }
-
+  if (!achievements) achievements = [];
   if (typeof achievements === 'string') {
-    try {
-      achievements = JSON.parse(achievements);
-    } catch (e) {
-      achievements = [];
-    }
+    try { achievements = JSON.parse(achievements); }
+    catch { achievements = []; }
   }
+  if (!Array.isArray(achievements)) achievements = [];
 
-  if (!Array.isArray(achievements)) {
-    achievements = [];
-  }
+  const box = document.getElementById('my-achievements');
 
-  const container = document.getElementById('my-achievements');
-
-  if (achievements.length === 0) {
-    container.innerHTML = `
-      <div class="achievement">
-        Ачивок пока нет
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = achievements.map(a => `
-    <div class="achievement">
-      ${map[a] || a}
-    </div>
-  `).join('');
+  box.innerHTML = achievements.length
+    ? achievements.map(a => `<div class="achievement">${map[a] || a}</div>`).join('')
+    : `<div class="achievement">Ачивок пока нет</div>`;
 }
 
-async function setOnlineStatus(isOnline) {
-
-  const updates = {
-    is_online: isOnline
-  };
-
-  if (isOnline) {
-    updates.status = 'Учусь';
-    updates.study_start = new Date().toISOString();
-  }
-
-  await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', MY_ID);
-}
-
-window.setBreakStatus = async () => {
-
-  if (!currentMeData) return;
-
-  await supabase
-    .from('profiles')
-    .update({
-      status: 'Перерыв',
-      study_start: null,
-      total_study_seconds:
-        calculateAccumulatedSeconds()
-    })
-    .eq('id', MY_ID);
-
-  load();
-}
-
-window.setExitStatus = async () => {
-
-  await supabase
-    .from('profiles')
-    .update({
-      status: 'Выход',
-      study_start: null,
-      total_study_seconds: 0
-    })
-    .eq('id', MY_ID);
-
-  load();
-}
+/* ===================== CORE ===================== */
 
 window.toggleStudySession = async () => {
 
   if (!currentMeData) return;
 
-  const isMeOnline =
+  const isOnline =
     currentMeData.is_online === true ||
     currentMeData.is_online === 'true';
 
   const isStudying =
-    isMeOnline &&
-    currentMeData.status === 'Учусь';
+    isOnline && currentMeData.status === 'Учусь';
 
   const updates = {};
 
   if (isStudying) {
 
-    const total =
-      calculateAccumulatedSeconds();
-
-    if (total >= 7200) {
-      addAchievement('marathon');
-    }
-
     updates.is_online = false;
     updates.status = 'Дома';
-    updates.total_study_seconds = total;
+    updates.total_study_seconds = getTotalSeconds();
     updates.study_start = null;
 
   } else {
-
-    const hour = new Date().getHours();
-
-    if (hour < 8) {
-      addAchievement('early_bird');
-    }
-
-    addAchievement('first_session');
 
     updates.is_online = true;
     updates.status = 'Учусь';
     updates.study_start = new Date().toISOString();
 
-    if (currentMeData.status === 'Выход') {
-      updates.total_study_seconds = 0;
-    }
   }
 
-  await supabase
-    .from('profiles')
+  await supabase.from('profiles')
     .update(updates)
     .eq('id', MY_ID);
 
   load();
-}
+};
+
+/* ===================== TOP FIX ===================== */
 
 function renderTopStudents(data) {
 
   const sorted = [...data]
-    .sort((a, b) =>
-      (b.total_study_seconds || 0) -
-      (a.total_study_seconds || 0)
-    )
-    .slice(0, 5);
+    .sort((a,b)=>(b.total_study_seconds||0)-(a.total_study_seconds||0))
+    .slice(0,5);
 
   document.getElementById('top-students').innerHTML =
-    sorted.map((u, index) => `
-
+    sorted.map((u,i)=>`
       <div class="list-item">
-
-        <div>
-          #${index + 1} ${u.username}
-        </div>
-
-        <div class="time-text">
-          ${formatDuration(u.total_study_seconds || 0)}
-        </div>
-
+        <div>#${i+1} ${u.username}</div>
+        <div class="time-text">${formatDuration(u.total_study_seconds||0)}</div>
       </div>
-
     `).join('');
 }
 
-async function loadMessages() {
+/* ===================== UI TIME ===================== */
 
-  const { data, error } =
-    await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', {
-        ascending: true
-      });
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  const chatBox =
-    document.getElementById('chat-box');
-
-  chatBox.innerHTML = data.map(m => `
-
-    <div class="chat-message">
-
-      <div class="chat-user">
-        ${m.username}
-      </div>
-
-      <div class="chat-text">
-        ${m.text}
-      </div>
-
-    </div>
-
-  `).join('');
-
-  chatBox.scrollTop = chatBox.scrollHeight;
+function formatDuration(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h}ч ${m}м ${s}с`;
 }
 
-window.sendMessage = async () => {
-
-  const input =
-    document.getElementById('chat-input');
-
-  const text =
-    input.value.trim();
-
-  if (!text) return;
-
-  await supabase
-    .from('messages')
-    .insert({
-      user_id: MY_ID,
-      username: currentMeData.username,
-      text
-    });
-
-  const newCount =
-    (currentMeData.messages_count || 0) + 1;
-
-  await supabase
-    .from('profiles')
-    .update({
-      messages_count: newCount
-    })
-    .eq('id', MY_ID);
-
-  if (newCount >= 20) {
-    addAchievement('activist');
-  }
-
-  input.value = '';
-
-  loadMessages();
-
-  load();
-}
+/* ===================== LOAD ===================== */
 
 async function load() {
 
-  const { data, error } =
-    await supabase
-      .from('profiles')
-      .select('*');
-
-  if (error) {
-    console.error(error);
-    return;
-  }
+  const { data } = await supabase.from('profiles').select('*');
 
   renderTopStudents(data);
 
-  document.getElementById('list').innerHTML =
-    data.map(u => {
-
-      let liveSec =
-        u.total_study_seconds || 0;
-
-      const isUserOnline =
-        u.is_online === true ||
-        u.is_online === 'true';
-
-      if (
-        isUserOnline &&
-        u.study_start &&
-        u.status === 'Учусь'
-      ) {
-
-        const diff =
-          Math.floor(Date.now() / 1000) -
-          Math.floor(new Date(u.study_start).getTime() / 1000);
-
-        if (diff > 0) {
-          liveSec += diff;
-        }
-      }
-
-      return `
-
-        <div class="list-item">
-
-          <div>
-            <span class="online-dot ${isUserOnline ? 'active' : ''}"></span>
-            ${u.username}
-          </div>
-
-          <div class="time-text">
-            ${formatDuration(liveSec)}
-          </div>
-
-        </div>
-
-      `;
-    }).join('');
-
-  const me =
-    data.find(u => u.id === MY_ID);
+  const me = data.find(u => u.id === MY_ID);
 
   if (me) {
-
     currentMeData = me;
 
-    document.getElementById('me-name').innerText =
-      me.username || 'Без имени';
+    document.getElementById('me-name').innerText = me.username;
 
     renderAchievements();
 
-    const mainBtn =
-      document.getElementById('main-action-btn');
-
-    const isMeOnline =
-      me.is_online === true ||
-      me.is_online === 'true';
-
-    if (
-      isMeOnline &&
-      me.status === 'Учусь'
-    ) {
-
-      mainBtn.className = "btn-stop";
-
-      mainBtn.innerText =
-        "⛔ Завершить сессию";
-
-    } else {
-
-      mainBtn.className = "btn-start";
-
-      mainBtn.innerText =
-        "▶️ Начать / Продолжить учебу";
-    }
+    document.getElementById('me-timer').innerText =
+      formatDuration(getTotalSeconds());
   }
 }
 
-setInterval(() => {
-
-  if (currentMeData) {
-
-    let liveSec =
-      currentMeData.total_study_seconds || 0;
-
-    const isMeOnline =
-      currentMeData.is_online === true ||
-      currentMeData.is_online === 'true';
-
-    if (
-      isMeOnline &&
-      currentMeData.study_start &&
-      currentMeData.status === 'Учусь'
-    ) {
-
-      const diff =
-        Math.floor(Date.now() / 1000) -
-        Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
-
-      if (diff > 0) {
-        liveSec += diff;
-      }
-    }
-
-    document.getElementById('me-timer').innerText =
-      formatDuration(liveSec);
-  }
-
-}, 1000);
+/* ===================== INIT ===================== */
 
 setInterval(load, 4000);
-
-async function checkUser() {
-
-  const { data } =
-    await supabase.auth.getUser();
-
-  if (data?.user) {
-
-    document.getElementById("loginGoogle").style.display =
-      "none";
-
-    document.getElementById("logoutGoogle").style.display =
-      "block";
-
-    await setOnlineStatus(true);
-
-    load();
-
-    loadMessages();
-  }
-}
-
-document.getElementById("loginGoogle")
-.addEventListener("click", async () => {
-
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo:
-        "https://lausy240116.github.io/PO243/"
-    }
-  });
-});
-
-document.getElementById("logoutGoogle")
-.addEventListener("click", async () => {
-
-  const finalSeconds =
-    calculateAccumulatedSeconds();
-
-  await supabase
-    .from('profiles')
-    .update({
-      is_online: false,
-      status: 'Дома',
-      total_study_seconds: finalSeconds,
-      study_start: null
-    })
-    .eq('id', MY_ID);
-
-  await supabase.auth.signOut();
-
-  location.reload();
-});
-
-supabase
-.channel('messages')
-.on(
-  'postgres_changes',
-  {
-    event: '*',
-    schema: 'public',
-    table: 'messages'
-  },
-  () => {
-    loadMessages();
-  }
-)
-.subscribe();
-
-checkUser();
+load();
 
 </script>
 
