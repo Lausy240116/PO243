@@ -63,19 +63,10 @@ button {
   font-size: 15px;
   cursor: pointer;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: opacity 0.2s;
-}
-
-button:hover {
-  opacity: 0.9;
 }
 
 .btn-stop { background: #dc3545; }
-.btn-start { background: #28a745; } /* Добавили стиль для кнопки старта */
+.btn-start { background: #28a745; }
 .btn-break { background: #ffc107; color: #111; }
 .btn-logout { background: #6c757d; }
 
@@ -83,6 +74,7 @@ button:hover {
   display: flex;
   gap: 10px;
 }
+
 .btn-group button {
   width: 50%;
 }
@@ -90,63 +82,38 @@ button:hover {
 .section-title {
   font-size: 16px;
   font-weight: bold;
-  color: #111;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 0;
   margin-bottom: 20px;
 }
 
 .list-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-.list-item:last-child {
-  border-bottom: none;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  border-bottom: 1px solid #eee;
 }
 
 .online-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ccc; 
+  background: #ccc;
   display: inline-block;
 }
+
 .online-dot.active {
-  background: #28a745; 
+  background: #28a745;
 }
 
-.user-title {
-  font-weight: bold;
-  color: #111;
-}
-
-.user-status-info {
-  text-align: right;
-  font-size: 13px;
-  color: #666;
-}
-.status-text {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  justify-content: flex-end;
-}
 .time-text {
   color: #2b77f3;
   font-size: 12px;
-  margin-top: 2px;
+}
+
+.chat-message {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f7f7;
 }
 </style>
 </head>
@@ -157,6 +124,7 @@ button:hover {
   <button id="loginGoogle" style="background:#db4437;">
     Войти через Google
   </button>
+
   <button id="logoutGoogle" style="background:#555; display:none">
     Выйти
   </button>
@@ -164,13 +132,17 @@ button:hover {
 
 <div class="card status-card">
   <div class="user-name" id="me-name">Загрузка...</div>
-  
+
+  <div id="my-achievements" style="margin-bottom:15px;"></div>
+
   <div class="timer-display">
     ⏱️ <span id="me-timer">0 сек.</span>
   </div>
 
-  <button id="main-action-btn" class="btn-stop" onclick="toggleStudySession()">⛔ Завершить сессию</button>
-  
+  <button id="main-action-btn" class="btn-stop" onclick="toggleStudySession()">
+    ⛔ Завершить сессию
+  </button>
+
   <div class="btn-group">
     <button class="btn-break" onclick="setBreakStatus()">☕ Перерыв</button>
     <button class="btn-logout" onclick="setExitStatus()">Выход</button>
@@ -178,8 +150,36 @@ button:hover {
 </div>
 
 <div class="card">
+  <div class="section-title">🏆 Топ студентов</div>
+  <div id="top-students"></div>
+</div>
+
+<div class="card">
   <div class="section-title">👥 Монитор группы</div>
   <div id="list"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">💬 Общий чат</div>
+
+  <div id="chat-box" style="max-height:300px; overflow:auto; margin-bottom:15px;"></div>
+
+  <input
+    id="chat-input"
+    placeholder="Введите сообщение..."
+    style="
+      width:100%;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid #ddd;
+      margin-bottom:10px;
+      box-sizing:border-box;
+    "
+  >
+
+  <button class="btn-start" onclick="sendMessage()">
+    Отправить
+  </button>
 </div>
 
 <script type="module">
@@ -190,11 +190,9 @@ const KEY = 'sb_publishable_1YoIc3WsA1ywCxFfkcpdHg_ZWa5I6eN'
 const MY_ID = 'd9eeb7aa-2ded-47c5-86de-98377838ea2c'
 
 const supabase = createClient(URL, KEY)
-window.supabase = supabase
 
 let currentMeData = null;
 
-// Помогатор для фиксации набежавшего времени перед сменой статуса
 function calculateAccumulatedSeconds() {
   if (currentMeData && currentMeData.study_start) {
     const startSec = Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
@@ -202,188 +200,388 @@ function calculateAccumulatedSeconds() {
     const diff = Math.max(0, nowSec - startSec);
     return (currentMeData.total_study_seconds || 0) + diff;
   }
+
   return currentMeData ? (currentMeData.total_study_seconds || 0) : 0;
-}
-
-// Принудительный вход/инициализация
-async function setOnlineStatus(isOnline) {
-  const updates = { is_online: isOnline };
-  if (isOnline) {
-    updates.status = 'Учусь';
-    updates.study_start = new Date().toISOString();
-  }
-  
-  await supabase.from('profiles').update(updates).eq('id', MY_ID);
-}
-
-// КНОПКА: Перерыв (Останавливает таймер, сохраняя набранное время)
-window.setBreakStatus = async () => {
-  if (!currentMeData) return;
-  
-  const updates = {
-    status: 'Перерыв',
-    study_start: null, // Сбрасываем старт, чтобы таймер замер
-    total_study_seconds: calculateAccumulatedSeconds() // Сохраняем всё, что набежало
-  };
-
-  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
-  if (error) { console.error(error) } else { load() }
-}
-
-// КНОПКА: Выход (Сбрасывает таймер полностью в 0 и ставит статус Выход)
-window.setExitStatus = async () => {
-  const updates = {
-    status: 'Выход',
-    study_start: null,
-    total_study_seconds: 0 // СБРОС ТАЙМЕРА В 0
-  };
-
-  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
-  if (error) { console.error(error) } else { load() }
-}
-
-// КНОПКА: Главная большая кнопка (Старт / Завершить)
-window.toggleStudySession = async () => {
-  if (!currentMeData) return;
-
-  const isMeOnline = currentMeData.is_online === true || currentMeData.is_online === 'true';
-  const isStudying = isMeOnline && currentMeData.status === 'Учусь';
-
-  const updates = {};
-
-  if (isStudying) {
-    // Если учился — завершаем сессию, сохраняем время, выходим в офлайн
-    updates.is_online = false;
-    updates.status = 'Дома';
-    updates.total_study_seconds = calculateAccumulatedSeconds();
-    updates.study_start = null;
-  } else {
-    // Если был на перерыве, дома или выходе — запускаем (или продолжаем) учебу
-    updates.is_online = true;
-    updates.status = 'Учусь';
-    updates.study_start = new Date().toISOString(); // Новый отсчет пошел
-    
-    // Если статус был "Выход", то при старте зануляем таймер (на всякий случай)
-    if (currentMeData.status === 'Выход') {
-      updates.total_study_seconds = 0;
-    }
-  }
-
-  const { error } = await supabase.from('profiles').update(updates).eq('id', MY_ID);
-  if (error) { console.error(error) } else { load() }
 }
 
 function formatDuration(totalSeconds) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
+
   return `${hours}ч ${minutes}м ${seconds}с`;
 }
 
-// Загрузка данных
-async function load() {
-  const { data, error } = await supabase.from('profiles').select('*');
-  if (error) { console.error(error); return; }
+async function addAchievement(code) {
 
-  // Рендер списка группы
-  document.getElementById('list').innerHTML = data.map(u => {
-    let liveSec = u.total_study_seconds || 0;
-    const isUserOnline = u.is_online === true || u.is_online === 'true';
+  const current = currentMeData.achievements || [];
 
-    // Живой подсчет времени в списке работает, только если статус "Учусь" и идет отсчет
-    if (isUserOnline && u.study_start && u.status === 'Учусь') {
-      const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(u.study_start).getTime() / 1000);
-      if (diff > 0) liveSec += diff;
+  if (current.includes(code)) return;
+
+  const updated = [...current, code];
+
+  await supabase
+    .from('profiles')
+    .update({ achievements: updated })
+    .eq('id', MY_ID);
+
+  load();
+}
+
+function renderAchievements() {
+
+  if (!currentMeData) return;
+
+  const map = {
+    early_bird: '🌅 Ранняя пташка',
+    marathon: '🔥 Марафонец',
+    activist: '💬 Активист',
+    first_session: '🎯 Первый шаг'
+  };
+
+  const achievements = currentMeData.achievements || [];
+
+  document.getElementById('my-achievements').innerHTML =
+    achievements.map(a => `
+      <div>${map[a]}</div>
+    `).join('');
+}
+
+async function setOnlineStatus(isOnline) {
+
+  const updates = { is_online: isOnline };
+
+  if (isOnline) {
+    updates.status = 'Учусь';
+    updates.study_start = new Date().toISOString();
+  }
+
+  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+}
+
+window.setBreakStatus = async () => {
+
+  if (!currentMeData) return;
+
+  const updates = {
+    status: 'Перерыв',
+    study_start: null,
+    total_study_seconds: calculateAccumulatedSeconds()
+  };
+
+  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+
+  load();
+}
+
+window.setExitStatus = async () => {
+
+  const updates = {
+    status: 'Выход',
+    study_start: null,
+    total_study_seconds: 0
+  };
+
+  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+
+  load();
+}
+
+window.toggleStudySession = async () => {
+
+  if (!currentMeData) return;
+
+  const isMeOnline =
+    currentMeData.is_online === true ||
+    currentMeData.is_online === 'true';
+
+  const isStudying =
+    isMeOnline &&
+    currentMeData.status === 'Учусь';
+
+  const updates = {};
+
+  if (isStudying) {
+
+    const total = calculateAccumulatedSeconds();
+
+    if (total >= 7200) {
+      addAchievement('marathon');
     }
 
-    let statusIcon = '🏠';
-    if (u.status === 'Перерыв') statusIcon = '☕';
-    if (u.status === 'Учусь') statusIcon = '📝';
-    if (u.status === 'Выход') statusIcon = '🚪';
+    updates.is_online = false;
+    updates.status = 'Дома';
+    updates.total_study_seconds = total;
+    updates.study_start = null;
 
-    return `
+  } else {
+
+    const hour = new Date().getHours();
+
+    if (hour < 8) {
+      addAchievement('early_bird');
+    }
+
+    addAchievement('first_session');
+
+    updates.is_online = true;
+    updates.status = 'Учусь';
+    updates.study_start = new Date().toISOString();
+
+    if (currentMeData.status === 'Выход') {
+      updates.total_study_seconds = 0;
+    }
+  }
+
+  await supabase.from('profiles').update(updates).eq('id', MY_ID);
+
+  load();
+}
+
+function renderTopStudents(data) {
+
+  const sorted = [...data]
+    .sort((a, b) =>
+      (b.total_study_seconds || 0) -
+      (a.total_study_seconds || 0)
+    )
+    .slice(0, 5);
+
+  document.getElementById('top-students').innerHTML =
+    sorted.map((u, index) => `
       <div class="list-item">
-        <div class="user-info">
-          <div class="online-dot ${isUserOnline ? 'active' : ''}"></div>
-          <div class="user-title">${u.username || 'Без имени'}</div>
-        </div>
-        <div class="user-status-info">
-          <div class="status-text">${statusIcon} ${u.status || 'Нет статуса'}</div>
-          <div class="time-text">⏱️ ${formatDuration(liveSec)}</div>
+        <div>#${index + 1} ${u.username}</div>
+
+        <div class="time-text">
+          ${formatDuration(u.total_study_seconds || 0)}
         </div>
       </div>
-    `;
-  }).join('');
+    `).join('');
+}
+
+async function loadMessages() {
+
+  const { data } = await supabase
+    .from('messages')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  document.getElementById('chat-box').innerHTML =
+    data.map(m => `
+      <div class="chat-message">
+        <b>${m.username}</b><br>
+        ${m.text}
+      </div>
+    `).join('');
+}
+
+window.sendMessage = async () => {
+
+  const input = document.getElementById('chat-input');
+
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  await supabase.from('messages').insert({
+    user_id: MY_ID,
+    username: currentMeData.username,
+    text
+  });
+
+  const newCount = (currentMeData.messages_count || 0) + 1;
+
+  await supabase
+    .from('profiles')
+    .update({
+      messages_count: newCount
+    })
+    .eq('id', MY_ID);
+
+  if (newCount >= 20) {
+    addAchievement('activist');
+  }
+
+  input.value = '';
+
+  loadMessages();
+
+  load();
+}
+
+async function load() {
+
+  const { data, error } =
+    await supabase.from('profiles').select('*');
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  renderTopStudents(data);
+
+  document.getElementById('list').innerHTML =
+    data.map(u => {
+
+      let liveSec = u.total_study_seconds || 0;
+
+      const isUserOnline =
+        u.is_online === true ||
+        u.is_online === 'true';
+
+      if (
+        isUserOnline &&
+        u.study_start &&
+        u.status === 'Учусь'
+      ) {
+
+        const diff =
+          Math.floor(Date.now() / 1000) -
+          Math.floor(new Date(u.study_start).getTime() / 1000);
+
+        if (diff > 0) liveSec += diff;
+      }
+
+      return `
+        <div class="list-item">
+
+          <div>
+            <span class="online-dot ${isUserOnline ? 'active' : ''}"></span>
+            ${u.username}
+          </div>
+
+          <div class="time-text">
+            ${formatDuration(liveSec)}
+          </div>
+
+        </div>
+      `;
+    }).join('');
 
   const me = data.find(u => u.id === MY_ID);
+
   if (me) {
+
     currentMeData = me;
-    document.getElementById('me-name').innerText = me.username || 'Без имени';
-    
-    // Меняем внешний вид главной кнопки в зависимости от текущего состояния
-    const mainBtn = document.getElementById('main-action-btn');
-    const isMeOnline = me.is_online === true || me.is_online === 'true';
-    
+
+    document.getElementById('me-name').innerText =
+      me.username || 'Без имени';
+
+    renderAchievements();
+
+    const mainBtn =
+      document.getElementById('main-action-btn');
+
+    const isMeOnline =
+      me.is_online === true ||
+      me.is_online === 'true';
+
     if (isMeOnline && me.status === 'Учусь') {
+
       mainBtn.className = "btn-stop";
       mainBtn.innerText = "⛔ Завершить сессию";
+
     } else {
+
       mainBtn.className = "btn-start";
       mainBtn.innerText = "▶️ Начать / Продолжить учебу";
     }
   }
 }
 
-// Локальный таймер (обновление каждую секунду на экране)
 setInterval(() => {
+
   if (currentMeData) {
-    let liveSec = currentMeData.total_study_seconds || 0;
-    const isMeOnline = currentMeData.is_online === true || currentMeData.is_online === 'true';
-    
-    // Секунды тикают, только если мы онлайн И статус именно "Учусь"
-    if (isMeOnline && currentMeData.study_start && currentMeData.status === 'Учусь') {
-      const diff = Math.floor(Date.now() / 1000) - Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+
+    let liveSec =
+      currentMeData.total_study_seconds || 0;
+
+    const isMeOnline =
+      currentMeData.is_online === true ||
+      currentMeData.is_online === 'true';
+
+    if (
+      isMeOnline &&
+      currentMeData.study_start &&
+      currentMeData.status === 'Учусь'
+    ) {
+
+      const diff =
+        Math.floor(Date.now() / 1000) -
+        Math.floor(new Date(currentMeData.study_start).getTime() / 1000);
+
       if (diff > 0) liveSec += diff;
     }
-    
-    // Отображаем красивый формат времени вместо просто секунд
-    document.getElementById('me-timer').innerText = formatDuration(liveSec);
+
+    document.getElementById('me-timer').innerText =
+      formatDuration(liveSec);
   }
+
 }, 1000);
 
 setInterval(load, 4000);
 
 async function checkUser() {
+
   const { data } = await supabase.auth.getUser();
+
   if (data?.user) {
+
     document.getElementById("loginGoogle").style.display = "none";
+
     document.getElementById("logoutGoogle").style.display = "block";
-    
+
     await setOnlineStatus(true);
+
     load();
+
+    loadMessages();
   }
 }
 
-window.addEventListener('beforeunload', () => {
-  const finalSeconds = calculateAccumulatedSeconds();
-  const json = JSON.stringify({ is_online: false, status: 'Дома', total_study_seconds: finalSeconds, study_start: null });
-  const blob = new Blob([json], { type: 'application/json' });
-  navigator.sendBeacon(`${URL}/rest/v1/profiles?id=eq.${MY_ID}`, blob);
-});
+document.getElementById("loginGoogle")
+.addEventListener("click", async () => {
 
-document.getElementById("loginGoogle").addEventListener("click", async () => {
   await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: "https://lausy240116.github.io/PO243/" }
+    options: {
+      redirectTo: "https://lausy240116.github.io/PO243/"
+    }
   })
 });
 
-document.getElementById("logoutGoogle").addEventListener("click", async () => {
+document.getElementById("logoutGoogle")
+.addEventListener("click", async () => {
+
   const finalSeconds = calculateAccumulatedSeconds();
-  await supabase.from('profiles').update({ is_online: false, status: 'Дома', total_study_seconds: finalSeconds, study_start: null }).eq('id', MY_ID);
+
+  await supabase.from('profiles').update({
+    is_online: false,
+    status: 'Дома',
+    total_study_seconds: finalSeconds,
+    study_start: null
+  }).eq('id', MY_ID);
+
   await supabase.auth.signOut();
+
   location.reload();
 });
+
+supabase
+.channel('messages')
+.on(
+  'postgres_changes',
+  {
+    event: '*',
+    schema: 'public',
+    table: 'messages'
+  },
+  () => {
+    loadMessages();
+  }
+)
+.subscribe();
 
 checkUser();
 </script>
